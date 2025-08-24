@@ -1,33 +1,3 @@
-thats literally how tooltips appear in the app : E/e' mean <div class="tooltip-icon" title="The ratio E/e' approximates LV filling pressures (e.g., PCWP).&#10;&#10;How to measure: Calculate as E divided by the average of septal and lateral e'.">ℹ️</div> , change that
-streamlit.errors.StreamlitMixedNumericTypesError: This app has encountered an error. The original error message is redacted to prevent data leaks. Full error details have been recorded in the logs (if you're on Streamlit Cloud, click on 'Manage app' in the lower right of your app).
-
-Traceback:
-File "/mount/src/prvg-evaluator/app.py", line 1213, in <module>
-    Ar_minus_A = st.number_input(f"PV Ar - MV A (ms) {create_tooltip('Ar_minus_A')}", min_value=0.0, step=1, format="%.0f",
-                                disabled=not show_if("Ar_minus_A"), key="Ar_minus_A_input", value=st.session_state.Ar_minus_A_input)
-File "/home/adminuser/venv/lib/python3.13/site-packages/streamlit/runtime/metrics_util.py", line 443, in wrapped_func
-    result = non_optional_func(*args, **kwargs)
-File "/home/adminuser/venv/lib/python3.13/site-packages/streamlit/elements/widgets/number_input.py", line 401, in number_input
-    return self._number_input(
-           ~~~~~~~~~~~~~~~~~~^
-        label=label,
-        ^^^^^^^^^^^^
-    ...<15 lines>...
-        ctx=ctx,
-        ^^^^^^^^
-    )
-    ^
-File "/home/adminuser/venv/lib/python3.13/site-packages/streamlit/elements/widgets/number_input.py", line 482, in _number_input
-    raise StreamlitMixedNumericTypesError(
-        value=value, min_value=min_value, max_value=max_value, step=step
-    )
-
-
-Dark mode is working but the text color stays dark which gives dark on dark..
-
-Change that
-
-
 # app.py
 # Streamlit PRVG Assistant — Enhanced with clinical adaptation, UI/UX improvements, and educational features
 import streamlit as st
@@ -41,7 +11,7 @@ from io import BytesIO
 st.set_page_config(page_title="PRVG Assistant", page_icon="🫀", layout="wide")
 
 # -----------------------
-# CSS Styling
+# CSS Styling - Updated for better dark mode support
 # -----------------------
 st.markdown("""
 <style>
@@ -52,6 +22,7 @@ st.markdown("""
     border-radius: 10px; 
     box-shadow: 0 2px 6px rgba(0,0,0,0.06); 
     margin-bottom: 16px;
+    color: #000000; /* Ensure text is black in light mode */
 }
 .big-btn { 
     padding: 12px 18px; 
@@ -92,6 +63,7 @@ st.markdown("""
     padding: 12px;
     border-radius: 4px;
     margin: 8px 0;
+    color: #000000; /* Ensure text is black in light mode */
 }
 .how-box {
     background-color: #f0f9ff;
@@ -99,6 +71,7 @@ st.markdown("""
     padding: 12px;
     border-radius: 4px;
     margin: 8px 0;
+    color: #000000; /* Ensure text is black in light mode */
 }
 .tooltip-icon {
     color: #3b82f6;
@@ -117,6 +90,7 @@ st.markdown("""
     padding: 12px;
     margin-bottom: 16px;
     border-left: 4px solid #3b82f6;
+    color: #000000; /* Ensure text is black in light mode */
 }
 .wizard-step.active {
     background-color: #e0f2fe;
@@ -134,19 +108,12 @@ st.markdown("""
     padding: 14px 20px !important;
     font-size: 16px !important;
 }
-.dark-mode {
-    background-color: #1e293b;
-    color: #f1f5f9;
-}
-.dark-mode .card {
-    background-color: #334155;
-    color: #f1f5f9;
-}
 .algorithm-flow {
     background-color: white;
     padding: 16px;
     border-radius: 8px;
     margin: 16px 0;
+    color: #000000; /* Ensure text is black in light mode */
 }
 .flow-step {
     padding: 8px 12px;
@@ -166,22 +133,37 @@ st.markdown("""
     border-radius: 6px;
     padding: 12px;
     margin: 8px 0;
+    color: #000000; /* Ensure text is black in light mode */
 }
+
 /* Dark mode styles */
-[data-theme="dark"] {
-    background-color: #1e293b;
-    color: #f1f5f9;
-}
-[data-theme="dark"] .card {
+[data-theme="dark"] .card,
+[data-theme="dark"] .why-box,
+[data-theme="dark"] .how-box,
+[data-theme="dark"] .wizard-step,
+[data-theme="dark"] .algorithm-flow,
+[data-theme="dark"] .pitfall-alert {
     background-color: #334155;
-    color: #f1f5f9;
+    color: #f1f5f9 !important; /* Force white text in dark mode */
 }
+
 [data-theme="dark"] .stNumberInput input, 
 [data-theme="dark"] .stTextInput input,
-[data-theme="dark"] .stSelectbox select {
+[data-theme="dark"] .stSelectbox select,
+[data-theme="dark"] .stTextInput label,
+[data-theme="dark"] .stNumberInput label,
+[data-theme="dark"] .stSelectbox label {
     background-color: #475569;
-    color: #f1f5f9;
+    color: #f1f5f9 !important;
     border-color: #64748b;
+}
+
+[data-theme="dark"] .small-muted {
+    color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .footer {
+    color: #94a3b8 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -296,7 +278,7 @@ LANGUAGES = {
         "pitfall_alerts": "Alertes pièges",
         "algorithm_flow": "Flux de décision de l'algorithme",
         "references": "Références",
-        "disclaimer": "Avertissement: Cet outil est destiné à l'aide à la décision clinique et ne doit pas être utilisé pour un diagnostic autonome."
+        "disclaimer": "Avertissement: Cet outil est destiné à l'aide à la décision clinique et ne doit pas être utilisé pour un diagnóstico autonome."
     },
     "Arabic": {
         "title": "مساعد PRVG — تقييم ديناميكا الدم الشامل بواسطة Echo",
@@ -1240,7 +1222,8 @@ elif st.session_state.current_step == 2:
                                   key="PV_S_input", value=st.session_state.PV_S_input)
             PV_D = st.number_input(f"PV D (cm/s) {create_tooltip('PV_D')}", min_value=0.0, step=0.1, format="%.1f", 
                                   key="PV_D_input", value=st.session_state.PV_D_input)
-            Ar_minus_A = st.number_input(f"PV Ar - MV A (ms) {create_tooltip('Ar_minus_A')}", min_value=0.0, step=1, format="%.0f", 
+            # Fixed: Changed min_value from 0.0 to 0 and format from "%.0f" to "%d"
+            Ar_minus_A = st.number_input(f"PV Ar - MV A (ms) {create_tooltip('Ar_minus_A')}", min_value=0, step=1, format="%d",
                                         disabled=not show_if("Ar_minus_A"), key="Ar_minus_A_input", value=st.session_state.Ar_minus_A_input)
         
         with adv_cols[1]:
@@ -1259,9 +1242,11 @@ elif st.session_state.current_step == 2:
             if 'TE_minus_e_input' not in st.session_state:
                 st.session_state.TE_minus_e_input = None
                 
-            IVRT = st.number_input(f"IVRT (ms) {create_tooltip('IVRT')}", min_value=0.0, step=1, format="%.0f", 
+            # Fixed: Changed min_value from 0.0 to 0 and format from "%.0f" to "%d"
+            IVRT = st.number_input(f"IVRT (ms) {create_tooltip('IVRT')}", min_value=0, step=1, format="%d",
                                   key="IVRT_input", value=st.session_state.IVRT_input)
-            DT = st.number_input(f"DT (ms) {create_tooltip('DT')}", min_value=0.0, step=1, format="%.0f", 
+            # Fixed: Changed min_value from 0.0 to 0 and format from "%.0f" to "%d"
+            DT = st.number_input(f"DT (ms) {create_tooltip('DT')}", min_value=0, step=1, format="%d",
                                 key="DT_input", value=st.session_state.DT_input)
             EDV = st.number_input(f"PV EDV (cm/s) {create_tooltip('EDV')}", min_value=0.0, step=0.1, format="%.1f", 
                                  key="EDV_input", value=st.session_state.EDV_input)
@@ -1269,7 +1254,8 @@ elif st.session_state.current_step == 2:
                                 key="Vp_input", value=st.session_state.Vp_input)
             E_over_Vp = st.number_input(f"E/Vp {create_tooltip('E_over_Vp')}", min_value=0.0, step=0.1, format="%.1f", 
                                        key="E_over_Vp_input", value=st.session_state.E_over_Vp_input)
-            TEe = st.number_input(f"TE - e' (ms) {create_tooltip('TE_minus_e')}", min_value=0.0, step=1, format="%.0f", 
+            # Fixed: Changed min_value from 0.0 to 0 and format from "%.0f" to "%d"
+            TEe = st.number_input(f"TE - e' (ms) {create_tooltip('TE_minus_e')}", min_value=0, step=1, format="%d",
                                  key="TE_minus_e_input", value=st.session_state.TE_minus_e_input)
             
         st.markdown(f"#### {t('contextual_params')}")

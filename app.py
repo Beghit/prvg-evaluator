@@ -137,6 +137,22 @@ st.markdown("""
     padding: 12px;
     margin: 8px 0;
 }
+/* Dark mode styles */
+[data-theme="dark"] {
+    background-color: #1e293b;
+    color: #f1f5f9;
+}
+[data-theme="dark"] .card {
+    background-color: #334155;
+    color: #f1f5f9;
+}
+[data-theme="dark"] .stNumberInput input, 
+[data-theme="dark"] .stTextInput input,
+[data-theme="dark"] .stSelectbox select {
+    background-color: #475569;
+    color: #f1f5f9;
+    border-color: #64748b;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -879,27 +895,90 @@ def evaluate_PRVG(meas, ctx, age, athlete):
 # Language selector in sidebar
 with st.sidebar:
     st.session_state.language = st.selectbox("Language", list(LANGUAGES.keys()), index=0)
-    st.session_state.dark_mode = st.checkbox(t("dark_mode"), value=False)
+    
+    # Dark mode toggle with proper implementation
+    if st.checkbox(t("dark_mode"), value=st.session_state.dark_mode):
+        st.session_state.dark_mode = True
+        st.markdown(
+            """
+            <style>
+            .stApp {
+                background-color: #1e293b;
+                color: #f1f5f9;
+            }
+            .card {
+                background-color: #334155;
+                color: #f1f5f9;
+            }
+            .stNumberInput input, 
+            .stTextInput input,
+            .stSelectbox select {
+                background-color: #475569;
+                color: #f1f5f9;
+                border-color: #64748b;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+    else:
+        st.session_state.dark_mode = False
+        # Reset to default theme
+        st.markdown(
+            """
+            <style>
+            .stApp {
+                background-color: white;
+                color: black;
+            }
+            .card {
+                background-color: white;
+                color: black;
+            }
+            .stNumberInput input, 
+            .stTextInput input,
+            .stSelectbox select {
+                background-color: white;
+                color: black;
+                border-color: #ccc;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
     
     # Voice input placeholder
     st.write(f"🔊 {t('voice_input')} (Coming soon)")
     
-    # Example cases
+    # Example cases - fixed implementation
     st.markdown("---")
     st.subheader(t("try_example"))
     example_case = st.selectbox("Select example case", list(EXAMPLE_CASES.keys()))
+    
     if st.button("Load Example"):
         case_data = EXAMPLE_CASES[example_case]
-        st.session_state.age = case_data["age"]
-        st.session_state.presentation = case_data["presentation"]
-        st.session_state.rhythm = case_data["rhythm"]
         
-        # Set measurement values
+        # Set session state values for all inputs
         for key, value in case_data.items():
-            if key not in ["age", "presentation", "rhythm"]:
+            if key in ["age", "presentation", "rhythm"]:
+                st.session_state[key] = value
+            else:
                 st.session_state[f"{key}_input"] = value
         
-        st.experimental_rerun()
+        # Set contextual flags based on presentation
+        if case_data["presentation"] == "Athlete / Young":
+            st.session_state.athlete = True
+        else:
+            st.session_state.athlete = False
+            
+        # Set rhythm
+        if case_data["rhythm"] == "AF":
+            st.session_state.rhythm_af = True
+        else:
+            st.session_state.rhythm_af = False
+            
+        st.success(f"Loaded {example_case} example")
+        st.rerun()
     
     # References
     st.markdown("---")
@@ -909,9 +988,9 @@ with st.sidebar:
     - Lancellotti P et al. EACVI recommendations for the assessment of left ventricular filling pressure. Eur Heart J Cardiovasc Imaging 2024.
     """)
 
-# Apply dark mode if enabled
-if st.session_state.dark_mode:
-    st.markdown('<div class="dark-mode">', unsafe_allow_html=True)
+# Get current language strings
+def t(key):
+    return LANGUAGES[st.session_state.language].get(key, key)
 
 # Wizard navigation
 st.markdown(f"""
@@ -933,6 +1012,24 @@ with col3:
     step3_class = "wizard-step active" if st.session_state.current_step == 3 else "wizard-step"
     st.markdown(f'<div class="{step3_class}"><h4>{t("step3_title")}</h4></div>', unsafe_allow_html=True)
 
+# Initialize session state variables if they don't exist
+if 'age' not in st.session_state:
+    st.session_state.age = 65
+if 'presentation' not in st.session_state:
+    st.session_state.presentation = "General / Routine"
+if 'rhythm' not in st.session_state:
+    st.session_state.rhythm = "Sinus"
+if 'minimal_mode' not in st.session_state:
+    st.session_state.minimal_mode = True
+if 'auto_eval' not in st.session_state:
+    st.session_state.auto_eval = True
+if 'tachycardia' not in st.session_state:
+    st.session_state.tachycardia = False
+if 'bradycardia' not in st.session_state:
+    st.session_state.bradycardia = False
+if 'poor_window' not in st.session_state:
+    st.session_state.poor_window = False
+
 # Step 1: Patient Information
 if st.session_state.current_step == 1:
     st.markdown(f"### {t('step1_title')}")
@@ -944,42 +1041,67 @@ if st.session_state.current_step == 1:
                 t("clinical_presentation"),
                 ["General / Routine", "Athlete / Young", "Hypertension / LVH", "Heart Failure (chronic)", 
                  "Atrial Fibrillation", "Pulmonary Hypertension", "Post-op / Acute", "Valve disease (MR/MS/AS)"],
-                key="presentation"
+                key="presentation_select",
+                index=["General / Routine", "Athlete / Young", "Hypertension / LVH", "Heart Failure (chronic)", 
+                 "Atrial Fibrillation", "Pulmonary Hypertension", "Post-op / Acute", "Valve disease (MR/MS/AS)"].index(st.session_state.presentation)
             )
-            age = st.number_input(t("age"), min_value=12, max_value=110, value=65, step=1, key="age")
+            age = st.number_input(t("age"), min_value=12, max_value=110, value=st.session_state.age, step=1, key="age_input")
             athlete = True if presentation == "Athlete / Young" else False
             
         with p2:
-            rhythm = st.radio(t("rhythm"), ["Sinus", "AF"], index=0 if presentation != "Atrial Fibrillation" else 1, key="rhythm")
-            minimal_mode = st.checkbox(t("minimal_mode"), value=True, 
+            rhythm = st.radio(t("rhythm"), ["Sinus", "AF"], 
+                             index=0 if st.session_state.rhythm == "Sinus" else 1, 
+                             key="rhythm_radio")
+            minimal_mode = st.checkbox(t("minimal_mode"), value=st.session_state.minimal_mode, 
                                       help="Show only the most relevant parameters for the selected presentation",
-                                      key="minimal_mode")
-            auto_eval = st.checkbox(t("auto_eval"), value=True, key="auto_eval")
+                                      key="minimal_mode_check")
+            auto_eval = st.checkbox(t("auto_eval"), value=st.session_state.auto_eval, key="auto_eval_check")
             
         with p3:
             st.write("")  # spacing
             st.caption(t("profile"))
             # Add contextual flags
-            tachycardia = st.checkbox(t("tachycardia"), value=False, 
+            tachycardia = st.checkbox(t("tachycardia"), value=st.session_state.tachycardia, 
                                      help="HR > 100 bpm - may shorten diastolic intervals",
-                                     key="tachycardia")
-            bradycardia = st.checkbox(t("bradycardia"), value=False, 
+                                     key="tachycardia_check")
+            bradycardia = st.checkbox(t("bradycardia"), value=st.session_state.bradycardia, 
                                      help="HR < 60 bpm - may alter E/A relation",
-                                     key="bradycardia")
-            poor_window = st.checkbox(t("poor_window"), value=False, 
+                                     key="bradycardia_check")
+            poor_window = st.checkbox(t("poor_window"), value=st.session_state.poor_window, 
                                      help="Consider LARS or contrast enhancement",
-                                     key="poor_window")
+                                     key="poor_window_check")
     
     # Navigation buttons
     col_nav1, col_nav2 = st.columns([1, 5])
     with col_nav1:
         if st.button(t("next_step")):
+            # Save step 1 values to session state
+            st.session_state.age = age
+            st.session_state.presentation = presentation
+            st.session_state.rhythm = rhythm
+            st.session_state.minimal_mode = minimal_mode
+            st.session_state.auto_eval = auto_eval
+            st.session_state.tachycardia = tachycardia
+            st.session_state.bradycardia = bradycardia
+            st.session_state.poor_window = poor_window
+            
             st.session_state.current_step = 2
-            st.experimental_rerun()
+            st.rerun()
 
 # Step 2: Key Parameters
 elif st.session_state.current_step == 2:
     st.markdown(f"### {t('step2_title')}")
+    
+    # Use values from session state
+    presentation = st.session_state.presentation
+    rhythm = st.session_state.rhythm
+    minimal_mode = st.session_state.minimal_mode
+    auto_eval = st.session_state.auto_eval
+    tachycardia = st.session_state.tachycardia
+    bradycardia = st.session_state.bradycardia
+    poor_window = st.session_state.poor_window
+    age = st.session_state.age
+    athlete = True if presentation == "Athlete / Young" else False
     
     # Determine minimal fields based on presentation
     def minimal_fields(pres, rhythm):
@@ -1013,34 +1135,62 @@ elif st.session_state.current_step == 2:
 
     with cols[0]:
         st.markdown(f"#### {t('mitral_inflow')}")
+        # Initialize session state for inputs if not exists
+        if 'E_input' not in st.session_state:
+            st.session_state.E_input = None
+        if 'A_input' not in st.session_state:
+            st.session_state.A_input = None
+        if 'EA_input' not in st.session_state:
+            st.session_state.EA_input = None
+            
         E = st.number_input(f"E (cm/s) {create_tooltip('E')}", min_value=0.0, step=0.1, format="%.1f", 
-                           disabled=not show_if("E"), key="E_input")
+                           disabled=not show_if("E"), key="E_input", value=st.session_state.E_input)
         A = st.number_input(f"A (cm/s) {create_tooltip('A')}", min_value=0.0, step=0.1, format="%.1f", 
-                           disabled=not show_if("A"), key="A_input")
+                           disabled=not show_if("A"), key="A_input", value=st.session_state.A_input)
         EA = st.number_input("E/A ratio (if pre-calculated)", min_value=0.0, step=0.1, format="%.1f", 
-                            disabled=not show_if("EA"), key="EA_input")
+                            disabled=not show_if("EA"), key="EA_input", value=st.session_state.EA_input)
 
     with cols[1]:
         st.markdown(f"#### {t('tissue_doppler')}")
+        # Initialize session state for inputs if not exists
+        if 'e_septal_input' not in st.session_state:
+            st.session_state.e_septal_input = None
+        if 'e_lateral_input' not in st.session_state:
+            st.session_state.e_lateral_input = None
+        if 'E_over_e_septal_input' not in st.session_state:
+            st.session_state.E_over_e_septal_input = None
+        if 'E_over_e_lateral_input' not in st.session_state:
+            st.session_state.E_over_e_lateral_input = None
+        if 'E_over_e_mean_input' not in st.session_state:
+            st.session_state.E_over_e_mean_input = None
+            
         e_sept = st.number_input(f"e' septal (cm/s) {create_tooltip('e_septal')}", min_value=0.0, step=0.1, format="%.1f", 
-                                disabled=not (show_if("e_septal") or show_if("one_e_prime")), key="e_septal_input")
+                                disabled=not (show_if("e_septal") or show_if("one_e_prime")), key="e_septal_input", value=st.session_state.e_septal_input)
         e_lat = st.number_input(f"e' lateral (cm/s) {create_tooltip('e_lateral')}", min_value=0.0, step=0.1, format="%.1f", 
-                               disabled=not (show_if("e_lateral") or show_if("one_e_prime")), key="e_lateral_input")
+                               disabled=not (show_if("e_lateral") or show_if("one_e_prime")), key="e_lateral_input", value=st.session_state.e_lateral_input)
         E_over_e_sept = st.number_input(f"E/e' septal {create_tooltip('E_over_e_septal')}", min_value=0.0, step=0.1, format="%.1f", 
-                                       disabled=not show_if("E_over_e_septal"), key="E_over_e_septal_input")
+                                       disabled=not show_if("E_over_e_septal"), key="E_over_e_septal_input", value=st.session_state.E_over_e_septal_input)
         E_over_e_lat = st.number_input(f"E/e' lateral {create_tooltip('E_over_e_lateral')}", min_value=0.0, step=0.1, format="%.1f", 
-                                      disabled=not show_if("E_over_e_lateral"), key="E_over_e_lateral_input")
+                                      disabled=not show_if("E_over_e_lateral"), key="E_over_e_lateral_input", value=st.session_state.E_over_e_lateral_input)
         E_over_e_mean = st.number_input(f"E/e' mean {create_tooltip('E_over_e_mean')}", min_value=0.0, step=0.1, format="%.1f", 
-                                       disabled=not show_if("E_over_e_mean"), key="E_over_e_mean_input")
+                                       disabled=not show_if("E_over_e_mean"), key="E_over_e_mean_input", value=st.session_state.E_over_e_mean_input)
 
     with cols[2]:
         st.markdown(f"#### {t('other_params')}")
+        # Initialize session state for inputs if not exists
+        if 'TR_vmax_input' not in st.session_state:
+            st.session_state.TR_vmax_input = None
+        if 'LAVi_input' not in st.session_state:
+            st.session_state.LAVi_input = None
+        if 'LARS_input' not in st.session_state:
+            st.session_state.LARS_input = None
+            
         TR_vmax = st.number_input(f"TR Vmax (m/s) {create_tooltip('TR_vmax')}", min_value=0.0, step=0.01, format="%.2f", 
-                                 disabled=not show_if("TR_vmax"), key="TR_vmax_input")
+                                 disabled=not show_if("TR_vmax"), key="TR_vmax_input", value=st.session_state.TR_vmax_input)
         LAVi = st.number_input(f"LAVi (mL/m²) {create_tooltip('LAVi')}", min_value=0.0, step=0.1, format="%.1f", 
-                              disabled=not show_if("LAVi"), key="LAVi_input")
+                              disabled=not show_if("LAVi"), key="LAVi_input", value=st.session_state.LAVi_input)
         LARS = st.number_input(f"LA reservoir strain (LARS %) {create_tooltip('LARS')}", min_value=0.0, step=0.1, format="%.1f", 
-                              disabled=not show_if("LARS"), key="LARS_input")
+                              disabled=not show_if("LARS"), key="LARS_input", value=st.session_state.LARS_input)
 
     # Advanced parameters
     with st.expander(t("advanced_params")):
@@ -1048,28 +1198,73 @@ elif st.session_state.current_step == 2:
         
         with adv_cols[0]:
             st.markdown(f"#### {t('pulmonary_vein')}")
-            PV_S = st.number_input(f"PV S (cm/s) {create_tooltip('PV_S')}", min_value=0.0, step=0.1, format="%.1f", key="PV_S_input")
-            PV_D = st.number_input(f"PV D (cm/s) {create_tooltip('PV_D')}", min_value=0.0, step=0.1, format="%.1f", key="PV_D_input")
+            # Initialize session state for inputs if not exists
+            if 'PV_S_input' not in st.session_state:
+                st.session_state.PV_S_input = None
+            if 'PV_D_input' not in st.session_state:
+                st.session_state.PV_D_input = None
+            if 'Ar_minus_A_input' not in st.session_state:
+                st.session_state.Ar_minus_A_input = None
+                
+            PV_S = st.number_input(f"PV S (cm/s) {create_tooltip('PV_S')}", min_value=0.0, step=0.1, format="%.1f", 
+                                  key="PV_S_input", value=st.session_state.PV_S_input)
+            PV_D = st.number_input(f"PV D (cm/s) {create_tooltip('PV_D')}", min_value=0.0, step=0.1, format="%.1f", 
+                                  key="PV_D_input", value=st.session_state.PV_D_input)
             Ar_minus_A = st.number_input(f"PV Ar - MV A (ms) {create_tooltip('Ar_minus_A')}", min_value=0.0, step=1, format="%.0f", 
-                                        disabled=not show_if("Ar_minus_A"), key="Ar_minus_A_input")
+                                        disabled=not show_if("Ar_minus_A"), key="Ar_minus_A_input", value=st.session_state.Ar_minus_A_input)
         
         with adv_cols[1]:
             st.markdown(f"#### {t('other_advanced')}")
-            IVRT = st.number_input(f"IVRT (ms) {create_tooltip('IVRT')}", min_value=0.0, step=1, format="%.0f", key="IVRT_input")
-            DT = st.number_input(f"DT (ms) {create_tooltip('DT')}", min_value=0.0, step=1, format="%.0f", key="DT_input")
-            EDV = st.number_input(f"PV EDV (cm/s) {create_tooltip('EDV')}", min_value=0.0, step=0.1, format="%.1f", key="EDV_input")
-            Vp = st.number_input(f"Vp (cm/s) {create_tooltip('Vp')}", min_value=0.0, step=0.1, format="%.1f", key="Vp_input")
-            E_over_Vp = st.number_input(f"E/Vp {create_tooltip('E_over_Vp')}", min_value=0.0, step=0.1, format="%.1f", key="E_over_Vp_input")
-            TEe = st.number_input(f"TE - e' (ms) {create_tooltip('TE_minus_e')}", min_value=0.0, step=1, format="%.0f", key="TE_minus_e_input")
+            # Initialize session state for inputs if not exists
+            if 'IVRT_input' not in st.session_state:
+                st.session_state.IVRT_input = None
+            if 'DT_input' not in st.session_state:
+                st.session_state.DT_input = None
+            if 'EDV_input' not in st.session_state:
+                st.session_state.EDV_input = None
+            if 'Vp_input' not in st.session_state:
+                st.session_state.Vp_input = None
+            if 'E_over_Vp_input' not in st.session_state:
+                st.session_state.E_over_Vp_input = None
+            if 'TE_minus_e_input' not in st.session_state:
+                st.session_state.TE_minus_e_input = None
+                
+            IVRT = st.number_input(f"IVRT (ms) {create_tooltip('IVRT')}", min_value=0.0, step=1, format="%.0f", 
+                                  key="IVRT_input", value=st.session_state.IVRT_input)
+            DT = st.number_input(f"DT (ms) {create_tooltip('DT')}", min_value=0.0, step=1, format="%.0f", 
+                                key="DT_input", value=st.session_state.DT_input)
+            EDV = st.number_input(f"PV EDV (cm/s) {create_tooltip('EDV')}", min_value=0.0, step=0.1, format="%.1f", 
+                                 key="EDV_input", value=st.session_state.EDV_input)
+            Vp = st.number_input(f"Vp (cm/s) {create_tooltip('Vp')}", min_value=0.0, step=0.1, format="%.1f", 
+                                key="Vp_input", value=st.session_state.Vp_input)
+            E_over_Vp = st.number_input(f"E/Vp {create_tooltip('E_over_Vp')}", min_value=0.0, step=0.1, format="%.1f", 
+                                       key="E_over_Vp_input", value=st.session_state.E_over_Vp_input)
+            TEe = st.number_input(f"TE - e' (ms) {create_tooltip('TE_minus_e')}", min_value=0.0, step=1, format="%.0f", 
+                                 key="TE_minus_e_input", value=st.session_state.TE_minus_e_input)
             
         st.markdown(f"#### {t('contextual_params')}")
         ctx_cols = st.columns(3)
         with ctx_cols[0]:
-            cycles = st.number_input("Averaged cycles (AF)", min_value=0, step=1, format="%d", key="cycles_input")
+            # Initialize session state for inputs if not exists
+            if 'cycles_input' not in st.session_state:
+                st.session_state.cycles_input = None
+                
+            cycles = st.number_input("Averaged cycles (AF)", min_value=0, step=1, format="%d", 
+                                    key="cycles_input", value=st.session_state.cycles_input)
         with ctx_cols[1]:
-            HR = st.number_input("HR (bpm)", min_value=0, step=1, format="%d", key="HR_input")
+            # Initialize session state for inputs if not exists
+            if 'HR_input' not in st.session_state:
+                st.session_state.HR_input = None
+                
+            HR = st.number_input("HR (bpm)", min_value=0, step=1, format="%d", 
+                                key="HR_input", value=st.session_state.HR_input)
         with ctx_cols[2]:
-            LVEF = st.number_input("LVEF (%)", min_value=0, max_value=100, step=1, format="%d", key="LVEF_input")
+            # Initialize session state for inputs if not exists
+            if 'LVEF_input' not in st.session_state:
+                st.session_state.LVEF_input = None
+                
+            LVEF = st.number_input("LVEF (%)", min_value=0, max_value=100, step=1, format="%d", 
+                                  key="LVEF_input", value=st.session_state.LVEF_input)
 
     # Measurement dictionary
     meas = {
@@ -1121,6 +1316,7 @@ elif st.session_state.current_step == 2:
     # Evaluate or wait
     if auto_eval and len(needed) == 0:
         result = evaluate_PRVG(meas, ctx, age, athlete)
+        st.session_state.result = result
     else:
         result = None
 
@@ -1130,10 +1326,15 @@ elif st.session_state.current_step == 2:
         if not auto_eval:
             if st.button(t("evaluate"), key="eval"):
                 result = evaluate_PRVG(meas, ctx, age, athlete)
+                st.session_state.result = result
     with colB:
         st.write("")
         if st.button(t("clear")):
-            st.experimental_rerun()
+            # Clear all input values
+            for key in st.session_state.keys():
+                if key.endswith('_input'):
+                    st.session_state[key] = None
+            st.rerun()
     with colC:
         st.write("")
         st.caption(f"{t('auto_eval_status')} " + ("enabled" if auto_eval else "disabled"))
@@ -1147,11 +1348,11 @@ elif st.session_state.current_step == 2:
     with col_nav1:
         if st.button(t("prev_step")):
             st.session_state.current_step = 1
-            st.experimental_rerun()
+            st.rerun()
     with col_nav2:
         if st.button(t("next_step")) and result is not None:
             st.session_state.current_step = 3
-            st.experimental_rerun()
+            st.rerun()
 
 # Step 3: Results & Export
 elif st.session_state.current_step == 3:
@@ -1161,8 +1362,14 @@ elif st.session_state.current_step == 3:
         st.warning("Please go back to Step 2 and evaluate first.")
         if st.button(t("prev_step")):
             st.session_state.current_step = 2
-            st.experimental_rerun()
+            st.rerun()
         st.stop()
+    
+    # Use values from session state
+    presentation = st.session_state.presentation
+    rhythm = st.session_state.rhythm
+    age = st.session_state.age
+    athlete = True if presentation == "Athlete / Young" else False
     
     result = st.session_state.result
     
@@ -1250,7 +1457,13 @@ elif st.session_state.current_step == 3:
         these parameters into a comprehensive assessment.
         """)
         
-        used_params = [k for k, v in meas.items() if v is not None and k in PARAMETER_EXPLANATIONS]
+        # Get measurements from session state
+        used_params = []
+        for key in st.session_state.keys():
+            if key.endswith('_input') and st.session_state[key] is not None:
+                param_name = key.replace('_input', '')
+                if param_name in PARAMETER_EXPLANATIONS:
+                    used_params.append(param_name)
         
         if used_params:
             st.markdown(f"##### {t('parameters_provided')}")
@@ -1272,7 +1485,7 @@ elif st.session_state.current_step == 3:
     now = datetime.utcnow().isoformat(timespec="seconds") + "Z"
     summary_lines = [
         f"PRVG Assistant Comprehensive Report — {now}",
-        f"Presentation: {presentation} (Age {age})  Rhythm: {ctx['rhythm']}",
+        f"Presentation: {presentation} (Age {age})  Rhythm: {rhythm}",
         f"Result: {result['status']}  Grade: {result.get('grade','NA')}  Confidence: {result.get('confidence','')}",
         "",
         "Narrative:",
@@ -1300,9 +1513,11 @@ elif st.session_state.current_step == 3:
         "Measurements provided:"
     ])
     
-    for k, v in meas.items():
-        if v is not None:
-            summary_lines.append(f"- {k}: {v}")
+    # Get measurements from session state
+    for key in st.session_state.keys():
+        if key.endswith('_input') and st.session_state[key] is not None:
+            param_name = key.replace('_input', '')
+            summary_lines.append(f"- {param_name}: {st.session_state[key]}")
     
     summary_text = "\n".join(summary_lines)
     
@@ -1314,7 +1529,23 @@ elif st.session_state.current_step == 3:
                           file_name="prvg_comprehensive_report.txt", mime="text/plain")
     
     with exp_col2:
-        st.download_button(t("download_csv"), data=pd.DataFrame([meas]).to_csv(index=False), 
+        # Create data for CSV export
+        data_dict = {}
+        for key in st.session_state.keys():
+            if key.endswith('_input') and st.session_state[key] is not None:
+                param_name = key.replace('_input', '')
+                data_dict[param_name] = [st.session_state[key]]
+        
+        # Add context information
+        data_dict["Presentation"] = [presentation]
+        data_dict["Age"] = [age]
+        data_dict["Rhythm"] = [rhythm]
+        data_dict["Result"] = [result['status']]
+        data_dict["Grade"] = [result.get('grade', 'NA')]
+        data_dict["Confidence"] = [result.get('confidence', '')]
+        
+        df = pd.DataFrame(data_dict)
+        st.download_button(t("download_csv"), data=df.to_csv(index=False), 
                           file_name="prvg_data.csv", mime="text/csv")
     
     st.text_area(t("report_summary"), value=summary_text, height=250)
@@ -1324,7 +1555,7 @@ elif st.session_state.current_step == 3:
     with col_nav1:
         if st.button(t("prev_step")):
             st.session_state.current_step = 2
-            st.experimental_rerun()
+            st.rerun()
 
 # Footer
 st.markdown("---")
@@ -1335,7 +1566,3 @@ st.markdown(f"""
 {t('based_on')}
 </div>
 """, unsafe_allow_html=True)
-
-# Close dark mode div if enabled
-if st.session_state.dark_mode:
-    st.markdown('</div>', unsafe_allow_html=True)

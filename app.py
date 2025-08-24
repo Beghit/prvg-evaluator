@@ -11,7 +11,7 @@ from io import BytesIO
 st.set_page_config(page_title="PRVG Assistant", page_icon="🫀", layout="wide")
 
 # -----------------------
-# CSS Styling - Updated for better dark mode support
+# CSS Styling - Simplified
 # -----------------------
 st.markdown("""
 <style>
@@ -22,7 +22,7 @@ st.markdown("""
     border-radius: 10px; 
     box-shadow: 0 2px 6px rgba(0,0,0,0.06); 
     margin-bottom: 16px;
-    color: #000000; /* Ensure text is black in light mode */
+    color: #000000;
 }
 .big-btn { 
     padding: 12px 18px; 
@@ -63,7 +63,7 @@ st.markdown("""
     padding: 12px;
     border-radius: 4px;
     margin: 8px 0;
-    color: #000000; /* Ensure text is black in light mode */
+    color: #000000;
 }
 .how-box {
     background-color: #f0f9ff;
@@ -71,7 +71,7 @@ st.markdown("""
     padding: 12px;
     border-radius: 4px;
     margin: 8px 0;
-    color: #000000; /* Ensure text is black in light mode */
+    color: #000000;
 }
 .tooltip-icon {
     color: #3b82f6;
@@ -90,7 +90,7 @@ st.markdown("""
     padding: 12px;
     margin-bottom: 16px;
     border-left: 4px solid #3b82f6;
-    color: #000000; /* Ensure text is black in light mode */
+    color: #000000;
 }
 .wizard-step.active {
     background-color: #e0f2fe;
@@ -113,7 +113,7 @@ st.markdown("""
     padding: 16px;
     border-radius: 8px;
     margin: 16px 0;
-    color: #000000; /* Ensure text is black in light mode */
+    color: #000000;
 }
 .flow-step {
     padding: 8px 12px;
@@ -133,43 +133,13 @@ st.markdown("""
     border-radius: 6px;
     padding: 12px;
     margin: 8px 0;
-    color: #000000; /* Ensure text is black in light mode */
-}
-
-/* Dark mode styles */
-[data-theme="dark"] .card,
-[data-theme="dark"] .why-box,
-[data-theme="dark"] .how-box,
-[data-theme="dark"] .wizard-step,
-[data-theme="dark"] .algorithm-flow,
-[data-theme="dark"] .pitfall-alert {
-    background-color: #334155;
-    color: #f1f5f9 !important; /* Force white text in dark mode */
-}
-
-[data-theme="dark"] .stNumberInput input, 
-[data-theme="dark"] .stTextInput input,
-[data-theme="dark"] .stSelectbox select,
-[data-theme="dark"] .stTextInput label,
-[data-theme="dark"] .stNumberInput label,
-[data-theme="dark"] .stSelectbox label {
-    background-color: #475569;
-    color: #f1f5f9 !important;
-    border-color: #64748b;
-}
-
-[data-theme="dark"] .small-muted {
-    color: #cbd5e1 !important;
-}
-
-[data-theme="dark"] .footer {
-    color: #94a3b8 !important;
+    color: #000000;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # -----------------------
-# Internationalization
+# Internationalization (English and French only)
 # -----------------------
 LANGUAGES = {
     "English": {
@@ -213,7 +183,6 @@ LANGUAGES = {
         "footer_text": "This tool is for clinical decision support only. Noninvasive estimates of filling pressures have limitations — always correlate with clinical findings and consider natriuretic peptides or invasive hemodynamics when management depends on precise LAP assessment.",
         "based_on": "Based on ASE/EACVI 2016 Guidelines and subsequent literature.",
         "try_example": "Try Example Case",
-        "dark_mode": "Dark Mode",
         "voice_input": "Voice Input",
         "step1_title": "Step 1: Patient Information",
         "step2_title": "Step 2: Key Parameters",
@@ -267,7 +236,6 @@ LANGUAGES = {
         "footer_text": "Cet outil est uniquement destiné à l'aide à la décision clinique. Les estimations non invasives des pressions de remplissage ont des limites — toujours corréler avec les résultats cliniques et envisager les peptides natriurétiques ou l'hémodynamique invasive lorsque la prise en charge dépend d'une estimation précise de la POG.",
         "based_on": "Basé sur les recommandations ASE/EACVI 2016 et la littérature suivante.",
         "try_example": "Essayer un cas exemple",
-        "dark_mode": "Mode sombre",
         "voice_input": "Entrée vocale",
         "step1_title": "Étape 1: Informations patient",
         "step2_title": "Étape 2: Paramètres clés",
@@ -279,60 +247,6 @@ LANGUAGES = {
         "algorithm_flow": "Flux de décision de l'algorithme",
         "references": "Références",
         "disclaimer": "Avertissement: Cet outil est destiné à l'aide à la décision clinique et ne doit pas être utilisé pour un diagnóstico autonome."
-    },
-    "Arabic": {
-        "title": "مساعد PRVG — تقييم ديناميكا الدم الشامل بواسطة Echo",
-        "clinical_presentation": "العرض السريري (اختر أفضل تطابق)",
-        "age": "العمر (سنوات)",
-        "rhythm": "نظم القلب",
-        "sinus": "نظم الجيبي",
-        "AF": "الرجفان الأذيني",
-        "minimal_mode": "وضع المدخلات الأدنى",
-        "auto_eval": "تقييم تلقائي عند وجود الحقول الدنيا",
-        "profile": "الملف: حدود ASE 2025",
-        "tachycardia": "تسرع القلب",
-        "bradycardia": "بطء القلب",
-        "poor_window": "نافذة صوتية رديئة",
-        "measurements": "القياسات",
-        "minimal_mode_desc": "يعرض الوضع الأدنى الحقول المطلوبة فقط للعرض المحدد. وسّع للمزيد من المعاملات.",
-        "mitral_inflow": "تدفق الصمام التاجي",
-        "tissue_doppler": "دوبلر الأنسجة",
-        "other_params": "معاملات أخرى",
-        "advanced_params": "معاملات متقدمة / اختيارية",
-        "pulmonary_vein": "تدفق الوريد الرئوي",
-        "other_advanced": "معاملات متقدمة أخرى",
-        "contextual_params": "معاملات سياقية",
-        "assessment_result": "نتيجة التقييم",
-        "evaluate": "قيم الآن",
-        "clear": "مسح المدخلات",
-        "auto_eval_status": "تقييم تلقائي",
-        "detailed_reasoning": "المنطق الطبي المفصل",
-        "reasoning_steps": "خطوات المنطق:",
-        "rules_triggered": "القواعد المشغلة:",
-        "acquisition_notes": "ملاحظات الاكتساب:",
-        "clinical_recommendations": "التوصيات السريرية",
-        "parameter_explanations": "شرح المعاملات",
-        "why_matter": "لماذا هذه المعاملات مهمة",
-        "parameters_provided": "المعاملات المقدمة:",
-        "export_report": "تصدير التقرير",
-        "download_full": "تحميل التقرير الكامل (نص)",
-        "download_csv": "تحميل البيانات (CSV)",
-        "report_summary": "ملخص التقرير (للتوثيق)",
-        "footer_text": "هذه الأداة هي لدعم القرار السريري فقط. تقديرات ضغوط الملء غير الغازية لها قيود — دائمًا راجع النتائج السريرية وفكر في الببتيدات المدرة للصوديوم أو ديناميكا الدم الغازية عندما يعتمد العلاج على تقدير دقيق لضغط الأذين الأيسر.",
-        "based_on": "استنادًا إلى إرشادات ASE/EACVI 2016 والأدبيات اللاحقة.",
-        "try_example": "جرب حالة مثال",
-        "dark_mode": "الوضع الداكن",
-        "voice_input": "إدخال صوتي",
-        "step1_title": "الخطوة 1: معلومات المريض",
-        "step2_title": "الخطوة 2: المعاملات الرئيسية",
-        "step3_title": "الخطوة 3: النتائج والتصدير",
-        "next_step": "الخطوة التالية",
-        "prev_step": "الخطوة السابقة",
-        "required_fields": "الحقول المطلوبة:",
-        "pitfall_alerts": "تنبيهات المزالق",
-        "algorithm_flow": "مخطط قرار الخوارزمية",
-        "references": "المراجع",
-        "disclaimer": "تنويه: هذه الأداة مخصصة لدعم القرار السريري ولا يجب استخدامها للتشخيص المنفرد."
     }
 }
 
@@ -341,8 +255,6 @@ if 'current_step' not in st.session_state:
     st.session_state.current_step = 1
 if 'language' not in st.session_state:
     st.session_state.language = "English"
-if 'dark_mode' not in st.session_state:
-    st.session_state.dark_mode = False
 
 # Get current language strings
 def t(key):
@@ -908,61 +820,10 @@ def evaluate_PRVG(meas, ctx, age, athlete):
 with st.sidebar:
     st.session_state.language = st.selectbox("Language", list(LANGUAGES.keys()), index=0)
     
-    # Dark mode toggle with proper implementation
-    if st.checkbox(t("dark_mode"), value=st.session_state.dark_mode):
-        st.session_state.dark_mode = True
-        st.markdown(
-            """
-            <style>
-            .stApp {
-                background-color: #1e293b;
-                color: #f1f5f9;
-            }
-            .card {
-                background-color: #334155;
-                color: #f1f5f9;
-            }
-            .stNumberInput input, 
-            .stTextInput input,
-            .stSelectbox select {
-                background-color: #475569;
-                color: #f1f5f9;
-                border-color: #64748b;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
-    else:
-        st.session_state.dark_mode = False
-        # Reset to default theme
-        st.markdown(
-            """
-            <style>
-            .stApp {
-                background-color: white;
-                color: black;
-            }
-            .card {
-                background-color: white;
-                color: black;
-            }
-            .stNumberInput input, 
-            .stTextInput input,
-            .stSelectbox select {
-                background-color: white;
-                color: black;
-                border-color: #ccc;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
-    
     # Voice input placeholder
     st.write(f"🔊 {t('voice_input')} (Coming soon)")
     
-    # Example cases - fixed implementation
+    # Example cases
     st.markdown("---")
     st.subheader(t("try_example"))
     example_case = st.selectbox("Select example case", list(EXAMPLE_CASES.keys()))
@@ -999,10 +860,6 @@ with st.sidebar:
     - Nagueh SF et al. Recommendations for the Evaluation of Left Ventricular Diastolic Function by Echocardiography. JASE 2016.
     - Lancellotti P et al. EACVI recommendations for the assessment of left ventricular filling pressure. Eur Heart J Cardiovasc Imaging 2024.
     """)
-
-# Get current language strings
-def t(key):
-    return LANGUAGES[st.session_state.language].get(key, key)
 
 # Wizard navigation
 st.markdown(f"""

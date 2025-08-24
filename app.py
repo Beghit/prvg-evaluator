@@ -1,3 +1,33 @@
+thats literally how tooltips appear in the app : E/e' mean <div class="tooltip-icon" title="The ratio E/e' approximates LV filling pressures (e.g., PCWP).&#10;&#10;How to measure: Calculate as E divided by the average of septal and lateral e'.">ℹ️</div> , change that
+streamlit.errors.StreamlitMixedNumericTypesError: This app has encountered an error. The original error message is redacted to prevent data leaks. Full error details have been recorded in the logs (if you're on Streamlit Cloud, click on 'Manage app' in the lower right of your app).
+
+Traceback:
+File "/mount/src/prvg-evaluator/app.py", line 1213, in <module>
+    Ar_minus_A = st.number_input(f"PV Ar - MV A (ms) {create_tooltip('Ar_minus_A')}", min_value=0.0, step=1, format="%.0f",
+                                disabled=not show_if("Ar_minus_A"), key="Ar_minus_A_input", value=st.session_state.Ar_minus_A_input)
+File "/home/adminuser/venv/lib/python3.13/site-packages/streamlit/runtime/metrics_util.py", line 443, in wrapped_func
+    result = non_optional_func(*args, **kwargs)
+File "/home/adminuser/venv/lib/python3.13/site-packages/streamlit/elements/widgets/number_input.py", line 401, in number_input
+    return self._number_input(
+           ~~~~~~~~~~~~~~~~~~^
+        label=label,
+        ^^^^^^^^^^^^
+    ...<15 lines>...
+        ctx=ctx,
+        ^^^^^^^^
+    )
+    ^
+File "/home/adminuser/venv/lib/python3.13/site-packages/streamlit/elements/widgets/number_input.py", line 482, in _number_input
+    raise StreamlitMixedNumericTypesError(
+        value=value, min_value=min_value, max_value=max_value, step=step
+    )
+
+
+Dark mode is working but the text color stays dark which gives dark on dark..
+
+Change that
+
+
 # app.py
 # Streamlit PRVG Assistant — Enhanced with clinical adaptation, UI/UX improvements, and educational features
 import streamlit as st

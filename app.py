@@ -1,13 +1,90 @@
 # app.py
-# Streamlit PRVG / LAP Evaluator — context-aware, why + how tooltips, age & athlete handling
+# Streamlit PRVG Assistant — Comprehensive medical reasoning with detailed tooltips
 import streamlit as st
 from math import isfinite
+import pandas as pd
+import json
+from datetime import datetime
 
-st.set_page_config(page_title="PRVG / LAP Evaluator", page_icon="🫀", layout="wide")
+st.set_page_config(page_title="PRVG Assistant", page_icon="🫀", layout="wide")
 
-# ========================
-# Configurable guideline profiles
-# ========================
+# -----------------------
+# CSS Styling
+# -----------------------
+st.markdown("""
+<style>
+/* Main styling */
+.card { 
+    background: white; 
+    padding: 16px; 
+    border-radius: 10px; 
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06); 
+    margin-bottom: 16px;
+}
+.big-btn { 
+    padding: 12px 18px; 
+    font-size: 16px; 
+}
+.small-muted { 
+    color: #6b7280; 
+    font-size: 13px; 
+}
+.result-card { 
+    padding: 14px; 
+    border-radius: 10px; 
+    color: white; 
+}
+.status-high { 
+    background: linear-gradient(90deg,#ef4444,#b91c1c); 
+}
+.status-possible { 
+    background: linear-gradient(90deg,#f59e0b,#d97706); 
+}
+.status-normal { 
+    background: linear-gradient(90deg,#10b981,#047857); 
+}
+.status-indet { 
+    background: linear-gradient(90deg,#64748b,#334155); 
+}
+.key { 
+    font-weight:600; 
+}
+.footer { 
+    color:#9ca3af; 
+    font-size:12px; 
+    padding-top:8px; 
+}
+.why-box {
+    background-color: #f8f9fa;
+    border-left: 4px solid #3b82f6;
+    padding: 12px;
+    border-radius: 4px;
+    margin: 8px 0;
+}
+.how-box {
+    background-color: #f0f9ff;
+    border-left: 4px solid #0ea5e9;
+    padding: 12px;
+    border-radius: 4px;
+    margin: 8px 0;
+}
+.tooltip-icon {
+    color: #3b82f6;
+    cursor: pointer;
+    margin-left: 4px;
+}
+.parameter-group {
+    background-color: #f8f9fa;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# -----------------------
+# Profiles / thresholds
+# -----------------------
 PROFILES = {
     "ASE-2025": {
         "E_e_mean_abn": 14.0,
@@ -31,38 +108,98 @@ PROFILES = {
         "DT_short_AF": 160.0,
         "EDV_AF_low": 220.0,
         "E_over_Vp_AF_abn": 1.4,
+    }
+}
+DEFAULT_PROFILE = "ASE-2025"
+P = PROFILES[DEFAULT_PROFILE]
+
+# -----------------------
+# Medical Knowledge Base
+# -----------------------
+PARAMETER_EXPLANATIONS = {
+    "E": {
+        "why": "Mitral inflow E velocity reflects early diastolic filling, influenced by LA pressure and LV relaxation.",
+        "how": "PW Doppler at mitral leaflet tips in apical 4-chamber view. Measure peak velocity in early diastole."
     },
-    "BSE-2024": {
-        # Same defaults for now (editable)
-        "E_e_mean_abn": 14.0,
-        "E_e_septal_abn": 15.0,
-        "E_e_lateral_abn": 13.0,
-        "e_septal_low": 6.0,
-        "e_lateral_low": 7.0,
-        "e_mean_low": 6.5,
-        "TR_vmax_abn": 2.8,
-        "TR_vmax_stress_abn": 3.2,
-        "LAVi_abn": 34.0,
-        "LARS_low": 18.0,
-        "pulm_SD_low": 0.67,
-        "IVRT_short_sinus": 70.0,
-        "IVRT_short_AF": 65.0,
-        "IVRT_short_restrict": 50.0,
-        "Ar_minus_A_abn": 30.0,
-        "TE_minus_e_abn": 50.0,
-        "E_A_restrictive": 2.0,
-        "E_A_low_cut": 0.8,
-        "DT_short_AF": 160.0,
-        "EDV_AF_low": 220.0,
-        "E_over_Vp_AF_abn": 1.4,
+    "A": {
+        "why": "Mitral inflow A velocity reflects late diastolic filling due to atrial contraction.",
+        "how": "PW Doppler at mitral leaflet tips in apical 4-chamber view. Measure peak velocity during atrial systole."
+    },
+    "e_septal": {
+        "why": "Septal mitral annular tissue Doppler e' velocity is a marker of LV relaxation.",
+        "how": "TDI at septal mitral annulus in apical 4-chamber view. Measure early diastolic velocity."
+    },
+    "e_lateral": {
+        "why": "Lateral mitral annular tissue Doppler e' velocity is a marker of LV relaxation.",
+        "how": "TDI at lateral mitral annulus in apical 4-chamber view. Measure early diastolic velocity."
+    },
+    "E_over_e_mean": {
+        "why": "The ratio E/e' approximates LV filling pressures (e.g., PCWP).",
+        "how": "Calculate as E divided by the average of septal and lateral e'."
+    },
+    "E_over_e_septal": {
+        "why": "The ratio E/e' septal approximates LV filling pressures, especially in certain populations.",
+        "how": "Calculate as E divided by septal e'."
+    },
+    "E_over_e_lateral": {
+        "why": "The ratio E/e' lateral approximates LV filling pressures, but may be less specific.",
+        "how": "Calculate as E divided by lateral e'."
+    },
+    "TR_vmax": {
+        "why": "TR jet peak velocity estimates systolic pulmonary artery pressure, which can be elevated in heart failure.",
+        "how": "CW Doppler across tricuspid valve. Use multiple views to align with jet and measure peak velocity."
+    },
+    "LAVi": {
+        "why": "Left atrial volume index reflects chronic elevation of LV filling pressures.",
+        "how": "Measure LA volume in apical 4-chamber and 2-chamber views at end-systole. Use area-length method and index to BSA."
+    },
+    "LARS": {
+        "why": "LA reservoir strain is a sensitive marker of LA dysfunction and elevated filling pressures.",
+        "how": "Use speckle-tracking echocardiography on apical 4-chamber and 2-chamber views to measure peak systolic strain."
+    },
+    "PV_S": {
+        "why": "Pulmonary vein systolic flow velocity can be reduced when LA pressure is elevated.",
+        "how": "PW Doppler in right upper pulmonary vein. Measure peak systolic velocity."
+    },
+    "PV_D": {
+        "why": "Pulmonary vein diastolic flow velocity increases when LA pressure is elevated.",
+        "how": "PW Doppler in right upper pulmonary vein. Measure peak diastolic velocity."
+    },
+    "Ar_minus_A": {
+        "why": "The difference between pulmonary vein Ar duration and mitral A duration reflects LV end-diastolic pressure.",
+        "how": "Measure duration of pulmonary vein Ar wave (atrial reversal) and mitral A wave. Subtract mitral A duration from Ar duration."
+    },
+    "IVRT": {
+        "why": "Isovolumic relaxation time shortens with elevated filling pressures and prolongs with impaired relaxation.",
+        "how": "CW or PW Doppler between LV outflow and inflow. Measure from aortic valve closure to mitral valve opening."
+    },
+    "DT": {
+        "why": "Deceleration time of E velocity shortens with restrictive physiology and elevated pressures.",
+        "how": "PW Doppler of mitral inflow. Measure time from E peak to where velocity declines to zero (or extrapolate if incomplete)."
+    },
+    "EDV": {
+        "why": "Pulmonary vein end-diastolic velocity may increase with elevated LA pressure in atrial fibrillation.",
+        "how": "PW Doppler in pulmonary vein. Measure velocity at end diastole."
+    },
+    "Vp": {
+        "why": "Color M-mode flow propagation velocity (Vp) can be used to estimate LV relaxation.",
+        "how": "Color M-mode in apical view aligned with inflow. Measure slope of first aliasing from mitral valve to LV apex."
+    },
+    "E_over_Vp": {
+        "why": "The ratio E/Vp correlates with PCWP.",
+        "how": "Calculate as E divided by Vp."
+    },
+    "TE_minus_e": {
+        "why": "The time difference between onset of E and e' may reflect LV diastolic dysfunction.",
+        "how": "Measure time from onset of mitral E to onset of e' on TDI."
     }
 }
 
-# ========================
-# Utilities & QC
-# ========================
-def nz(x):
-    return x is not None and (not (isinstance(x, float) and (x != x)))  # filters None and NaN
+# -----------------------
+# Utilities
+# -----------------------
+def nz(x): 
+    return x is not None and (not (isinstance(x, float) and (x != x)))
 
 def safe_mean(*vals):
     vs = [v for v in vals if nz(v)]
@@ -73,562 +210,648 @@ def compute_derived(meas):
         meas["EA"] = meas["E"]/meas["A"]
     else:
         meas["EA"] = meas.get("EA")
+    
     if not nz(meas.get("e_mean")):
         meas["e_mean"] = safe_mean(meas.get("e_septal"), meas.get("e_lateral"))
+    
     if not nz(meas.get("pulm_SD")) and nz(meas.get("PV_S")) and nz(meas.get("PV_D")) and meas.get("PV_D") != 0:
         meas["pulm_SD"] = meas["PV_S"]/meas["PV_D"]
+    
     if not nz(meas.get("E_over_Vp")) and nz(meas.get("E")) and nz(meas.get("Vp")) and meas.get("Vp") != 0:
         meas["E_over_Vp"] = meas["E"]/meas["Vp"]
 
-def qc(meas, ctx):
-    w = []
-    if ctx["rhythm"] == "AF" and (not nz(meas.get("cycles_averaged")) or meas.get("cycles_averaged") < 5):
-        w.append("AF: average ≥5–10 cycles with similar RR intervals.")
-    if nz(meas.get("TR_vmax")) and meas.get("TR_vmax") < 0.5:
-        w.append("TR signal likely unusable; envelope suspiciously low.")
-    if ctx.get("tachycardia"):
-        w.append("Tachycardia shortens DT/IVRT — interpret with caution.")
-    if ctx.get("bradycardia"):
-        w.append("Bradycardia: diastasis may change E/A ratio.")
-    if ctx.get("poor_acoustic_window"):
-        w.append("Poor window: prefer LARS/LAVi or contrast-enhanced imaging.")
-    return w
-
-# ========================
-# Atomic rules
-# ========================
-def rule_relax_abn(m, P):
-    return (nz(m.get("e_mean")) and m["e_mean"] <= P["e_mean_low"]) or \
-           (nz(m.get("e_septal")) and m["e_septal"] <= P["e_septal_low"]) or \
-           (nz(m.get("e_lateral")) and m["e_lateral"] <= P["e_lateral_low"])
-
-def rule_Ee_abn(m, P):
-    return (nz(m.get("E_over_e_mean")) and m["E_over_e_mean"] >= P["E_e_mean_abn"]) or \
-           (nz(m.get("E_over_e_septal")) and m["E_over_e_septal"] >= P["E_e_septal_abn"]) or \
-           (nz(m.get("E_over_e_lateral")) and m["E_over_e_lateral"] >= P["E_e_lateral_abn"])
-
-def rule_TR_abn(m, P): return nz(m.get("TR_vmax")) and m["TR_vmax"] >= P["TR_vmax_abn"]
-def rule_LAVi_abn(m, P): return nz(m.get("LAVi")) and m["LAVi"] >= P["LAVi_abn"]
-def rule_LARS_low(m, P): return nz(m.get("LARS")) and m["LARS"] <= P["LARS_low"]
-def rule_PV_SD_low(m, P): return nz(m.get("pulm_SD")) and m["pulm_SD"] <= P["pulm_SD_low"]
-def rule_IVRT_short_sinus(m, P): return nz(m.get("IVRT")) and m["IVRT"] <= P["IVRT_short_sinus"]
-def rule_IVRT_short_AF(m, P): return nz(m.get("IVRT")) and m["IVRT"] <= P["IVRT_short_AF"]
-def rule_IVRT_short_restrict(m, P): return nz(m.get("IVRT")) and m["IVRT"] <= P["IVRT_short_restrict"]
-def rule_ArA_abn(m, P): return nz(m.get("Ar_minus_A")) and m["Ar_minus_A"] >= P["Ar_minus_A_abn"]
-def rule_TEe_short(m, P): return nz(m.get("TE_minus_e")) and m["TE_minus_e"] <= P["TE_minus_e_abn"]
-def rule_restrictive(m, P): return nz(m.get("EA")) and m["EA"] >= P["E_A_restrictive"]
-def rule_low_EA(m, P): return nz(m.get("EA")) and m["EA"] <= P["E_A_low_cut"]
-
-def collect_surrogates_sinus(m, P):
-    tags = []
-    if rule_Ee_abn(m, P): tags.append("E/e' high")
-    if rule_TR_abn(m, P): tags.append("TR_vmax high")
-    if rule_LAVi_abn(m, P): tags.append("LAVi enlarged")
-    if rule_LARS_low(m, P): tags.append("LARS low")
-    if rule_PV_SD_low(m, P): tags.append("PV S/D low")
-    if rule_IVRT_short_sinus(m, P): tags.append("IVRT short")
-    return tags, len(tags)
-
-# ========================
-# Core evaluation functions (sinus/AF + special contexts)
-# ========================
-def finalize(res, m):
-    n_rules = len(res["fired"])
-    if res["status"] == "High":
-        res["confidence"] = "High" if n_rules >= 3 else ("Medium" if n_rules == 2 else (res.get("confidence") or "Medium"))
-    elif res["status"] == "PossibleHigh":
-        res["confidence"] = res.get("confidence") or "Medium"
-    elif res["status"] == "Normal":
-        res["confidence"] = res.get("confidence") or "Medium"
-    else:
-        res["confidence"] = res.get("confidence") or "Low"
-    if res["status"] == "Indeterminate":
-        res.setdefault("reco", []).append("Improve acquisition; add LA strain (LARS) and pulmonary vein flow.")
-        res.setdefault("reco", []).append("Consider natriuretic peptides; if management depends on LAP, perform invasive hemodynamics.")
-    if "TR_vmax high" not in res["fired"] and res["status"] in ["High", "PossibleHigh"] and not nz(m.get("TR_vmax")):
-        res.setdefault("reco", []).append("Acquire high-quality CW TR to refine PH/LAP interplay.")
-    return res
-
-def eval_sinus(m, ctx, P):
-    r = {"status":"", "grade":"NA", "confidence":"", "fired":[], "missing":[], "qc":[], "narrative":"", "reco":[]}
-    missing = []
-    if not nz(m.get("EA")): missing.append("E/A")
-    if not nz(m.get("e_septal")) and not nz(m.get("e_lateral")): missing.append("e'")
-    if not any(nz(m.get(k)) for k in ["E_over_e_mean", "E_over_e_septal", "E_over_e_lateral"]): missing.append("E/e'")
-    if not nz(m.get("TR_vmax")): missing.append("TR_vmax")
-    if not nz(m.get("LAVi")): missing.append("LAVi")
-    r["missing"] = missing
-
-    relax_abn = rule_relax_abn(m, P)
-    tags, nSur = collect_surrogates_sinus(m, P)
-
-    # If E/A missing
-    if not nz(m.get("EA")):
-        if nSur >= 2:
-            r.update(status="High", grade="G2_or_G3", confidence="Medium" if relax_abn else "Low", fired=tags,
-                     narrative="E/A missing; multiple abnormal surrogates → likely elevated LAP.")
-        else:
-            r.update(status="Indeterminate", confidence="Low", fired=tags,
-                     narrative="E/A missing and insufficient surrogates; obtain core Doppler measures.")
-            r.setdefault("reco", []).append("Acquire E/A, repeat E/e', TR, LAVi, LARS.")
-        return finalize(r, m)
-
-    # E/A ≤0.8 -> impaired relaxation
-    if rule_low_EA(m, P):
-        if nSur >= 1:
-            r.update(status="High", grade="G1_with_high_LAP", confidence="High" if nSur >= 2 else "Medium",
-                     fired=["E/A low"] + tags, narrative="E/A ≤0.8 with ≥1 abnormal surrogate -> elevated LAP.")
-        else:
-            r.update(status="Normal", grade="G1", confidence="Medium", fired=["E/A low"],
-                     narrative="E/A ≤0.8 without abnormal surrogates -> LAP likely normal.")
-        return finalize(r, m)
-
-    # E/A >= restrictive cutoff -> check athlete/age exceptions later
-    if rule_restrictive(m, P):
-        r.update(status="High", grade="G3 (restrictive)", confidence="High" if nSur >= 1 else "Medium",
-                 fired=["Restrictive E/A"] + tags, narrative="E/A suggests restrictive filling -> high LAP (unless overridden by context).")
-        return finalize(r, m)
-
-    # Intermediate E/A (0.8 < EA < 2)
-    if nSur >= 2:
-        r.update(status="High", grade="G2 (pseudonormal)", confidence="High", fired=tags + ["E/A intermediate"],
-                 narrative="Intermediate E/A with ≥2 abnormal surrogates → elevated LAP.")
-    elif nSur == 1:
-        r.update(status="PossibleHigh", grade="NA", confidence="Medium", fired=tags + ["E/A intermediate"],
-                 narrative="One abnormal surrogate -> possible elevated LAP. Consider LARS/IVRT/pulmonary veins.")
-        r.setdefault("reco", []).append("Add LARS or PV S/D or IVRT; consider BNP or stress diastolic if symptomatic.")
-    else:
-        r.update(status="Normal", grade="NA", confidence="Medium", fired=["E/A intermediate with no abnormal surrogates"],
-                 narrative="No abnormal surrogates -> LAP likely normal.")
-    return finalize(r, m)
-
-def eval_AF(m, ctx, P):
-    r = {"status":"", "grade":"NA", "confidence":"", "fired":[], "missing":[], "qc":[], "narrative":"", "reco":[]}
-    flags = []
-    if rule_IVRT_short_AF(m, P): flags.append("IVRT short (AF)")
-    if nz(m.get("E_over_e_septal")) and m["E_over_e_septal"] >= P["E_e_septal_abn"]: flags.append("E/e' septal high")
-    if rule_TR_abn(m, P): flags.append("TR_vmax high")
-    if nz(m.get("E_over_Vp")) and m["E_over_Vp"] >= P["E_over_Vp_AF_abn"]: flags.append("E/Vp high")
-    if nz(m.get("EDV")) and m["EDV"] <= P["EDV_AF_low"]: flags.append("PV EDV low (AF)")
-    if nz(m.get("DT")) and m["DT"] <= P["DT_short_AF"]: flags.append("DT short (AF)")
-    if len(flags) >= 1:
-        r.update(status="High", grade="NA", confidence="High" if len(flags) >= 2 else "Medium", fired=flags,
-                 narrative="AF: averaged surrogates abnormal across multiple beats.")
-    else:
-        r.update(status="Indeterminate", confidence="Low", narrative="AF: insufficient abnormal surrogates.")
-        r.setdefault("reco", []).append("Average ≥5–10 beats; add LARS/LAVi/PV; consider BNP or invasive testing if discordant.")
-    return finalize(r, m)
-
-# For brevity: implement simplified special-context wrappers that call above or apply tailored rule sets
-# (MR, MS, MAC, HCM, Restrictive, Aortic, Acute, LVAD, HTx, PH) — logical approach follows earlier pseudocode
-def eval_MR(m, ctx, P):
-    r = {"status":"", "grade":"NA", "confidence":"", "fired":[], "missing":[], "qc":[], "narrative":"", "reco":[]}
-    f = []
-    if rule_ArA_abn(m, P): f.append("PV Ar - MV A ≥ cutoff")
-    if rule_TEe_short(m, P): f.append("TE - e' short")
-    if rule_Ee_abn(m, P): f.append("E/e' high (interpret with caution in MR)")
-    if rule_IVRT_short_sinus(m, P): f.append("IVRT short")
-    if rule_LAVi_abn(m, P): f.append("LAVi enlarged")
-    if len(f) >= 2 or rule_ArA_abn(m, P):
-        r.update(status="High", confidence="High" if len(f) >= 3 else "Medium", fired=f)
-    elif len(f) == 1:
-        r.update(status="PossibleHigh", confidence="Low", fired=f)
-    else:
-        r.update(status="Indeterminate", confidence="Low",
-                 narrative="MR distorts transmitral indices; rely on PV Ar-A, IVRT, TE-e' and LARS.")
-        r.setdefault("reco", []).append("Add PV flow and LARS; consider invasive measurement if management depends on LAP.")
-    if r["narrative"] == "": r["narrative"] = "Mitral regurgitation context: use adjunct indices."
-    return finalize(r, m)
-
-def eval_MS(m, ctx, P):
-    r = {"status":"", "grade":"NA", "confidence":"", "fired":[], "missing":[], "qc":[], "narrative":"", "reco":[]}
-    f = []
-    if rule_ArA_abn(m, P): f.append("PV Ar - MV A ≥ cutoff")
-    if nz(m.get("IVRT")) and m["IVRT"] < 60: f.append("IVRT very short (MS)")
-    if len(f) >= 1:
-        r.update(status="PossibleHigh", confidence="Low", fired=f)
-    else:
-        r.update(status="Indeterminate", confidence="Low",
-                 narrative="MS: transmitral indices unreliable. Use PV Ar-A, LARS or invasive hemodyn.")
-        r.setdefault("reco", []).append("Consider invasive measurement if needed for decisions.")
-    return finalize(r, m)
-
-def eval_MAC(m, ctx, P):
-    r = {"status":"", "grade":"NA", "confidence":"", "fired":[], "missing":[], "qc":[], "narrative":"", "reco":[]}
-    if not nz(m.get("EA")):
-        r.update(status="Indeterminate", confidence="Low", narrative="MAC: E/A and IVRT needed.")
-        r.setdefault("reco", []).append("Obtain E/A and IVRT.")
-        return finalize(r, m)
-    if m["EA"] <= P["E_A_low_cut"]:
-        if nz(m.get("IVRT")) and m["IVRT"] < 80:
-            r.update(status="High", confidence="Medium", fired=["E/A low", "IVRT <80ms (MAC)"])
-        else:
-            r.update(status="Normal", confidence="Medium", fired=["E/A low"])
-    elif m["EA"] > 1.8:
-        r.update(status="High", confidence="High", fired=["E/A >1.8 (MAC)"])
-    else:
-        if nz(m.get("IVRT")) and m["IVRT"] < 80:
-            r.update(status="High", confidence="Medium", fired=["IVRT <80ms in MAC"])
-        else:
-            r.update(status="Indeterminate", confidence="Low", narrative="MAC: mid E/A without IVRT support.")
-            r.setdefault("reco", []).append("Use LARS or PV; consider invasive if needed.")
-    if r["narrative"] == "": r["narrative"] = "MAC modifies annular tissue velocities; combine E/A + IVRT + adjuncts."
-    return finalize(r, m)
-
-def eval_Aortic(m, ctx, P):
-    r = {"status":"", "grade":"NA", "confidence":"", "fired":[], "missing":[], "qc":[], "narrative":"", "reco":[]}
-    count = 0; flags = []
-    if rule_Ee_abn(m, P): count += 1; flags.append("E/e' high")
-    if rule_LAVi_abn(m, P): count += 1; flags.append("LAVi enlarged")
-    if rule_TR_abn(m, P): count += 1; flags.append("TR_vmax high")
-    if count >= 2:
-        r.update(status="High", confidence="Medium", fired=flags)
-    elif count == 1:
-        r.update(status="PossibleHigh", confidence="Low", fired=flags)
-    else:
-        r.update(status="Indeterminate", confidence="Low", narrative="AS/AR: combine multiple surrogates; single marker weak.")
-        r.setdefault("reco", []).append("Add LA strain or PV data; consider invasive if needed.")
-    return finalize(r, m)
-
-def eval_HCM(m, ctx, P):
-    r = {"status":"", "grade":"NA", "confidence":"", "fired":[], "missing":[], "qc":[], "narrative":"", "reco":[]}
-    f = []
-    if rule_Ee_abn(m, P): f.append("E/e' high")
-    if rule_LAVi_abn(m, P): f.append("LAVi enlarged")
-    if rule_TR_abn(m, P): f.append("TR_vmax high")
-    if rule_ArA_abn(m, P): f.append("PV Ar-A positive")
-    if len(f) >= 1:
-        r.update(status="High", confidence="High" if len(f) >= 2 else "Medium", fired=f)
-    else:
-        r.update(status="Indeterminate", confidence="Low", narrative="HCM: consider stress diastolic and LA strain.")
-        r.setdefault("reco", []).append("Add exercise/stress diastolic testing or LARS.")
-    return finalize(r, m)
-
-def eval_Restrictive(m, ctx, P):
-    r = {"status":"", "grade":"NA", "confidence":"", "fired":[], "missing":[], "qc":[], "narrative":"", "reco":[]}
-    if rule_restrictive(m, P):
-        r.update(status="High", grade="G3 (restrictive)", confidence="High", fired=["Restrictive E/A"],
-                 narrative="Restrictive E/A consistent with elevated LAP.")
-        return finalize(r, m)
-    f = []
-    if rule_IVRT_short_restrict(m, P): f.append("IVRT very short")
-    if nz(m.get("LARS")) and m["LARS"] <= 12: f.append("Very low LARS")
-    if rule_Ee_abn(m, P): f.append("E/e' high")
-    if rule_LAVi_abn(m, P): f.append("LAVi enlarged")
-    if len(f) >= 2:
-        r.update(status="High", confidence="High", fired=f)
-    elif len(f) == 1:
-        r.update(status="PossibleHigh", confidence="Medium", fired=f)
-    else:
-        r.update(status="Indeterminate", confidence="Low", narrative="Restrictive substrate: combine echo + biomarkers or invasive hemodynamics.")
-        r.setdefault("reco", []).append("Consider NT-proBNP and invasive assessment if needed.")
-    return finalize(r, m)
-
-def eval_Acute(m, ctx, P):
-    r = {"status":"", "grade":"NA", "confidence":"", "fired":[], "missing":[], "qc":[], "narrative":"", "reco":[]}
-    f=[]
-    if rule_TR_abn(m, P): f.append("TR_vmax high")
-    if rule_LAVi_abn(m, P): f.append("LAVi enlarged")
-    if rule_Ee_abn(m, P): f.append("E/e' high")
-    if len(f) >= 2:
-        r.update(status="High", confidence="Medium", fired=f)
-    elif len(f) == 1:
-        r.update(status="PossibleHigh", confidence="Low", fired=f)
-    else:
-        r.update(status="Indeterminate", confidence="Low", narrative="Acute states can transiently alter Doppler; need ≥2 concordant signs.")
-        r.setdefault("reco", []).append("Repeat when patient more stable or consider invasive testing if immediate decisions needed.")
-    return finalize(r, m)
-
-def eval_PH(m, ctx, P):
-    r = {"status":"", "grade":"NA", "confidence":"", "fired":[], "missing":[], "qc":[], "narrative":"", "reco":[]}
-    f=[]
-    if rule_restrictive(m, P): f.append("Restrictive inflow")
-    if rule_Ee_abn(m, P): f.append("E/e' high")
-    if rule_LAVi_abn(m, P): f.append("LAVi enlarged")
-    if len(f) >=1:
-        r.update(status="High", confidence="Medium", fired=f, narrative="Echo suggests post-capillary PH due to elevated LAP.")
-    else:
-        r.update(status="Indeterminate", confidence="Low", narrative="No clear left-heart elevation on echo; precapillary PH possible.")
-        r.setdefault("reco", []).append("Estimate PVR by Doppler or consider RHC.")
-    return finalize(r, m)
-
-# ========================
-# Master routing and age/athlete exceptions
-# ========================
-def apply_age_athlete_modifiers(res, m, age, athlete):
-    """Do not change thresholds. Modify interpretation confidence/rules for young athletes (E/A>2) or elderly isolated E/e'."""
+def qc_notes(meas, ctx):
     notes = []
-    # Young athlete: E/A > 2 alone less specific => don't classify as High solely on E/A
-    if athlete or (age is not None and age < 40):
-        # If result was High based only on restrictive E/A (no other fired rules), downgrade to PossibleHigh/Indeterminate
-        if res.get("fired") == ["Restrictive E/A"] or (res.get("status") == "High" and "Restrictive E/A" in res.get("fired", []) and len(res.get("fired", [])) == 1):
-            res["status"] = "PossibleHigh"
-            res["confidence"] = "Low-Medium"
-            notes.append("Athlete / age <40: solitary high E/A may be physiological; require supporting surrogates.")
-    # Elderly isolated E/e' elevation -> be cautious
-    if age is not None and age >= 75:
-        # if the only fired rule is E/e' elevate confidence down
-        fired = res.get("fired", [])
-        if len(fired) == 1 and ("E/e'" in fired[0] or "E/e' septal" in fired[0]):
-            res["confidence"] = "Low-Medium"
-            notes.append("Age ≥75: isolated E/e' elevation interpreted cautiously without TR or LAVi support.")
-    if notes:
-        res.setdefault("reco", []).extend(notes)
+    if ctx["rhythm"] == "AF" and (not nz(meas.get("cycles_averaged")) or meas.get("cycles_averaged") < 5):
+        notes.append("AF: average ≥5–10 beats with similar RR.")
+    if nz(meas.get("TR_vmax")) and meas.get("TR_vmax") < 0.5:
+        notes.append("TR envelope suspiciously low; re-acquire.")
+    if ctx.get("tachycardia"):
+        notes.append("Tachycardia shortens diastolic intervals — interpret with caution.")
+    if ctx.get("bradycardia"):
+        notes.append("Bradycardia may alter E/A relation.")
+    if ctx.get("poor_acoustic_window"):
+        notes.append("Poor acoustic window — consider LARS or contrast.")
+    return notes
 
-def evaluate_master(meas, ctx, profile_name, age, athlete):
-    P = PROFILES[profile_name]
+def create_tooltip(parameter_name):
+    explanation = PARAMETER_EXPLANATIONS.get(parameter_name, {})
+    why = explanation.get("why", "No explanation available.")
+    how = explanation.get("how", "No measurement instructions available.")
+    
+    tooltip_html = f"""
+    <div class="tooltip-icon" title="Why: {why}&#10;How: {how}">ℹ️</div>
+    """
+    return tooltip_html
+
+# Atomic rule checks
+def rule_low_e_prime(meas):
+    return (nz(meas.get("e_mean")) and meas["e_mean"] <= P["e_mean_low"]) or \
+           (nz(meas.get("e_septal")) and meas["e_septal"] <= P["e_septal_low"]) or \
+           (nz(meas.get("e_lateral")) and meas["e_lateral"] <= P["e_lateral_low"])
+
+def rule_Ee_high(meas):
+    return (nz(meas.get("E_over_e_mean")) and meas["E_over_e_mean"] >= P["E_e_mean_abn"]) or \
+           (nz(meas.get("E_over_e_septal")) and meas["E_over_e_septal"] >= P["E_e_septal_abn"]) or \
+           (nz(meas.get("E_over_e_lateral")) and meas["E_over_e_lateral"] >= P["E_e_lateral_abn"])
+
+def rule_TR_high(meas): 
+    return nz(meas.get("TR_vmax")) and meas["TR_vmax"] >= P["TR_vmax_abn"]
+
+def rule_LAVi_high(meas): 
+    return nz(meas.get("LAVi")) and meas["LAVi"] >= P["LAVi_abn"]
+
+def rule_LARS_low(meas): 
+    return nz(meas.get("LARS")) and meas["LARS"] <= P["LARS_low"]
+
+def rule_pv_SD_low(meas): 
+    return nz(meas.get("pulm_SD")) and meas["pulm_SD"] <= P["pulm_SD_low"]
+
+def rule_IVRT_short(meas): 
+    return nz(meas.get("IVRT")) and meas["IVRT"] <= P["IVRT_short_sinus"]
+
+def rule_restrictive_inflow(meas): 
+    return nz(meas.get("EA")) and meas["EA"] >= P["E_A_restrictive"]
+
+def rule_low_EA(meas): 
+    return nz(meas.get("EA")) and meas["EA"] <= P["E_A_low_cut"]
+
+def collect_surrogates(meas):
+    tags = []
+    if rule_Ee_high(meas): 
+        tags.append("E/e' high")
+    if rule_TR_high(meas): 
+        tags.append("TR Vmax high")
+    if rule_LAVi_high(meas): 
+        tags.append("Enlarged LAVi")
+    if rule_LARS_low(meas): 
+        tags.append("Low LA strain (LARS)")
+    if rule_pv_SD_low(meas): 
+        tags.append("Pulm vein S/D low")
+    if rule_IVRT_short(meas): 
+        tags.append("Short IVRT")
+    return tags
+
+# Decision engine with comprehensive medical reasoning
+def evaluate_PRVG(meas, ctx, age, athlete):
     compute_derived(meas)
-    q = qc(meas, ctx)
+    qc = qc_notes(meas, ctx)
+    fired = []
+    missing = []
+    reasoning = []
 
-    # route
-    if ctx.get("LVAD"):
-        # simplified LVAD handling: rely on concordant indices (detailed LVAD logic can be expanded)
-        r = eval_HCM(meas, ctx, P)
-    elif ctx.get("heart_tx"):
-        r = eval_HCM(meas, ctx, P)  # placeholder for detailed HTx logic
-    elif ctx.get("MS_present"):
-        r = eval_MS(meas, ctx, P)
-    elif ctx.get("MR_sev"):
-        r = eval_MR(meas, ctx, P)
-    elif ctx.get("MAC_modsev"):
-        r = eval_MAC(meas, ctx, P)
-    elif ctx.get("amyloid_rcm"):
-        r = eval_Restrictive(meas, ctx, P)
-    elif ctx.get("HCM"):
-        r = eval_HCM(meas, ctx, P)
-    elif ctx.get("aortic"):
-        r = eval_Aortic(meas, ctx, P)
-    elif ctx.get("acute"):
-        r = eval_Acute(meas, ctx, P)
-    elif ctx.get("precap_PH"):
-        r = eval_PH(meas, ctx, P)
-    elif ctx.get("rhythm") == "AF":
-        r = eval_AF(meas, ctx, P)
+    # Check minimal requirements based on rhythm
+    if ctx["rhythm"] == "AF":
+        # AF-specific requirements
+        if not any([nz(meas.get("IVRT")), nz(meas.get("TR_vmax")), nz(meas.get("E_over_e_septal")), nz(meas.get("EDV"))]):
+            missing = ["IVRT or TR Vmax or E/e' (septal) or PV EDV"]
+            reasoning.append("In AF, at least one of IVRT, TR Vmax, E/e' septal, or PV EDV is needed for assessment.")
     else:
-        r = eval_sinus(meas, ctx, P)
+        # Sinus rhythm requirements
+        if not any([nz(meas.get("EA")), nz(meas.get("E_over_e_mean")), nz(meas.get("TR_vmax")), nz(meas.get("LAVi"))]):
+            missing = ["E/A or E/e' or TR Vmax or LAVi"]
+            reasoning.append("In sinus rhythm, at least one of E/A, E/e', TR Vmax, or LAVi is needed for assessment.")
 
-    r["qc"] = q
-    apply_age_athlete_modifiers(r, meas, age, athlete)
-    return r
+    # If missing critical parameters -> return indeterminate
+    if missing:
+        return {
+            "status": "Indeterminate",
+            "grade": "NA",
+            "confidence": "Low",
+            "fired": [],
+            "missing": missing,
+            "qc": qc,
+            "reasoning": reasoning,
+            "narrative": "Insufficient core indices for reliable noninvasive LAP estimate.",
+            "reco": ["Acquire missing core indices; consider LARS or natriuretic peptides if available."]
+        }
 
-# ========================
-# UI: Context selector with minimal fields + measurement tooltips
-# ========================
-st.title("🫀 PRVG / LAP Evaluator — Context-aware + Why/How tooltips")
-st.caption("ASE/BSE style thresholds. Age & Athlete aware. 'Why' panel explains which rules fired; 'How' shows measurement technique.")
+    # Main decision logic
+    # AF branch
+    if ctx["rhythm"] == "AF":
+        flags = []
+        reasoning_af = []
+        
+        if nz(meas.get("IVRT")) and meas["IVRT"] <= P["IVRT_short_AF"]:
+            flags.append("Short IVRT (AF)")
+            reasoning_af.append(f"IVRT of {meas['IVRT']} ms ≤ {P['IVRT_short_AF']} ms suggests elevated filling pressures in AF.")
+        
+        if nz(meas.get("E_over_e_septal")) and meas["E_over_e_septal"] >= P["E_e_septal_abn"]:
+            flags.append("E/e' septal high")
+            reasoning_af.append(f"E/e' septal ratio of {meas['E_over_e_septal']} ≥ {P['E_e_septal_abn']} suggests elevated filling pressures.")
+        
+        if rule_TR_high(meas): 
+            flags.append("TR Vmax high")
+            reasoning_af.append(f"TR Vmax of {meas['TR_vmax']} m/s ≥ {P['TR_vmax_abn']} m/s suggests pulmonary hypertension.")
+        
+        if nz(meas.get("E_over_Vp")) and meas["E_over_Vp"] >= P["E_over_Vp_AF_abn"]:
+            flags.append("E/Vp high")
+            reasoning_af.append(f"E/Vp ratio of {meas['E_over_Vp']} ≥ {P['E_over_Vp_AF_abn']} suggests elevated filling pressures in AF.")
+        
+        # Decision making for AF
+        reasoning.extend(reasoning_af)
+        
+        if len(flags) >= 2:
+            status = "High"
+            confidence = "High"
+            narrative = "Multiple AF-specific surrogates abnormal, strongly suggesting elevated filling pressures."
+        elif len(flags) == 1:
+            status = "PossibleHigh"
+            confidence = "Medium"
+            narrative = "One AF-specific surrogate abnormal, suggesting possible elevated filling pressures."
+        else:
+            status = "Indeterminate"
+            confidence = "Low"
+            narrative = "No AF-specific surrogate clearly abnormal. Consider additional parameters."
+        
+        return {
+            "status": status,
+            "grade": "NA",
+            "confidence": confidence,
+            "fired": flags,
+            "missing": [],
+            "qc": qc,
+            "reasoning": reasoning,
+            "narrative": narrative,
+            "reco": ["Average multiple beats; consider invasive measurement if clinical decisions depend on LAP."]
+        }
 
-with st.sidebar:
-    st.header("Settings")
-    profile = st.selectbox("Guideline profile", list(PROFILES.keys()))
-    age = st.number_input("Patient age (years)", min_value=1, max_value=110, value=65, step=1)
-    athlete = st.checkbox("Trained athlete (physiologic high E/A possible)")
-    rhythm = st.radio("Rhythm", ["Sinus", "AF"])
-    st.markdown("---")
-    st.subheader("Clinical context (choose all that apply)")
-    MR_sev = st.checkbox("Mitral regurgitation ≥ moderate")
-    MS_present = st.checkbox("Mitral stenosis")
-    MAC_modsev = st.checkbox("Mitral annular calcification (moderate–severe)")
-    aortic = st.checkbox("Aortic valve disease (AS/AR)")
-    HCM = st.checkbox("Hypertrophic cardiomyopathy (HCM)")
-    amyloid_rcm = st.checkbox("Restrictive cardiomyopathy / Amyloid")
-    LVAD = st.checkbox("LVAD")
-    heart_tx = st.checkbox("Heart transplant")
-    acute = st.checkbox("Acute state (PE / sepsis / postop / ACS)")
-    precap_PH = st.checkbox("Suspected precapillary PH")
-    st.markdown("---")
-    st.subheader("Acquisition/UX")
-    minimal_mode = st.checkbox("Minimal inputs only (recommended)", value=True)
-    auto_eval = st.checkbox("Auto-evaluate when core fields present", value=True)
-    st.markdown("**Acquisition notes**")
-    tachy = st.checkbox("Tachycardia (>100 bpm)")
-    brady = st.checkbox("Bradycardia (<50 bpm)")
-    poor_win = st.checkbox("Poor acoustic window")
+    # Sinus rhythm branch
+    EA = meas.get("EA")
+    surrogates = collect_surrogates(meas)
+    reasoning_sr = []
+    
+    # Low EA (impaired relaxation)
+    if rule_low_EA(meas):
+        reasoning_sr.append(f"E/A ratio of {EA} ≤ {P['E_A_low_cut']} indicates impaired relaxation (Grade I diastolic dysfunction).")
+        
+        if len(surrogates) >= 1:
+            fired = ["E/A low"] + surrogates
+            reasoning_sr.append(f"Abnormal surrogates ({', '.join(surrogates)}) suggest elevated LAP despite impaired relaxation pattern.")
+            
+            return {
+                "status": "High",
+                "grade": "G1_with_high_LAP",
+                "confidence": "Medium" if len(surrogates)==1 else "High",
+                "fired": fired,
+                "missing": [],
+                "qc": qc,
+                "reasoning": reasoning_sr,
+                "narrative": "Impaired relaxation with abnormal surrogate(s) suggests elevated LAP (Grade I with elevated filling pressures).",
+                "reco": ["Consider LARS and/or BNP; correlate clinically."]
+            }
+        else:
+            return {
+                "status": "Normal",
+                "grade": "G1",
+                "confidence": "Medium",
+                "fired": ["E/A low"],
+                "missing": [],
+                "qc": qc,
+                "reasoning": reasoning_sr,
+                "narrative": "E/A ≤0.8 without abnormal surrogates — likely normal LAP (Grade I diastolic dysfunction).",
+                "reco": ["Follow clinical context."]
+            }
+    
+    # Restrictive inflow
+    if rule_restrictive_inflow(meas):
+        reasoning_sr.append(f"E/A ratio of {EA} ≥ {P['E_A_restrictive']} indicates restrictive filling pattern (Grade III diastolic dysfunction).")
+        
+        # Apply athlete/young exception
+        if athlete and age < 40:
+            reasoning_sr.append("Athlete/young exception applied: restrictive pattern may be normal in highly trained individuals.")
+            narrative = "Restrictive pattern detected but may be normal in athletes. Correlate with clinical context."
+            reco = ["Evaluate for other causes of high output state.", "Consider exercise testing."]
+            confidence = "Low"
+        else:
+            narrative = "Restrictive inflow suggests high LAP (Grade III diastolic dysfunction)."
+            reco = ["Confirm with LAVi/TR and consider invasive testing if discordant."]
+            confidence = "High" if len(surrogates)>=1 else "Medium"
+        
+        fired = ["E/A restrictive"] + surrogates
+        reasoning_sr.extend([f"Surrogate(s) abnormal: {', '.join(surrogates)}"] if surrogates else ["No additional abnormal surrogates."])
+        
+        return {
+            "status": "High",
+            "grade": "G3",
+            "confidence": confidence,
+            "fired": fired,
+            "missing": [],
+            "qc": qc,
+            "reasoning": reasoning_sr,
+            "narrative": narrative,
+            "reco": reco
+        }
 
-# decide core fields by context
-def minimal_fields_for_context():
-    if MS_present:
-        return ["IVRT", "Ar_minus_A"]
-    if MR_sev:
-        return ["Ar_minus_A", "IVRT", "LAVi"]
-    if amyloid_rcm:
-        return ["E", "A", "LARS", "IVRT"]
-    if aortic:
+    # Intermediate EA (pseudonormal)
+    if EA and 0.8 < EA < P["E_A_restrictive"]:
+        reasoning_sr.append(f"E/A ratio of {EA} suggests pseudonormal filling (Grade II diastolic dysfunction).")
+        
+        if len(surrogates) >= 2:
+            fired = surrogates
+            reasoning_sr.append(f"Multiple abnormal surrogates ({', '.join(surrogates)}) strongly suggest elevated LAP.")
+            
+            return {
+                "status": "High",
+                "grade": "G2",
+                "confidence": "High",
+                "fired": fired,
+                "missing": [],
+                "qc": qc,
+                "reasoning": reasoning_sr,
+                "narrative": "Intermediate E/A with multiple abnormal surrogates → elevated LAP (Grade II diastolic dysfunction).",
+                "reco": ["If symptomatic consider stress diastolic echo or BNP."]
+            }
+        elif len(surrogates) == 1:
+            fired = surrogates
+            reasoning_sr.append(f"One abnormal surrogate ({surrogates[0]}) suggests possible elevated LAP.")
+            
+            return {
+                "status": "PossibleHigh",
+                "grade": "NA",
+                "confidence": "Medium",
+                "fired": fired,
+                "missing": [],
+                "qc": qc,
+                "reasoning": reasoning_sr,
+                "narrative": "One abnormal surrogate → possible elevated LAP.",
+                "reco": ["Add LARS/IVRT/PV flow or BNP to improve confidence."]
+            }
+        else:
+            reasoning_sr.append("No abnormal surrogates suggest normal LAP despite pseudonormal pattern.")
+            
+            return {
+                "status": "Normal",
+                "grade": "NA",
+                "confidence": "Medium",
+                "fired": [],
+                "missing": [],
+                "qc": qc,
+                "reasoning": reasoning_sr,
+                "narrative": "Intermediate E/A without abnormal surrogates → LAP likely normal.",
+                "reco": ["If symptoms persist, perform stress diastolic testing."]
+            }
+
+    # Fallback safety net
+    reasoning_sr.append("Could not classify with confidence — data borderline or conflicting.")
+    
+    return {
+        "status": "Indeterminate",
+        "grade": "NA",
+        "confidence": "Low",
+        "fired": surrogates,
+        "missing": [],
+        "qc": qc,
+        "reasoning": reasoning_sr,
+        "narrative": "Could not classify with confidence — data borderline or conflicting.",
+        "reco": ["Obtain additional indices: LARS, PV flow, TR, or consider invasive hemodynamics."]
+    }
+
+# -----------------------
+# UI Implementation
+# -----------------------
+st.markdown("""
+<div class='card'>
+    <h2 style='margin:0'>PRVG Assistant — Comprehensive Echo Hemodynamic Assessment</h2>
+    <div class='small-muted'>Adaptive inputs • Age & Athlete aware • Detailed medical reasoning • Export summary</div>
+</div>
+""", unsafe_allow_html=True)
+
+st.write("")
+
+# Step 1: Presentation selector
+with st.container():
+    p1, p2, p3 = st.columns([2, 1, 1])
+    with p1:
+        presentation = st.selectbox(
+            "Clinical presentation (select best match)",
+            ["General / Routine", "Athlete / Young", "Hypertension / LVH", "Heart Failure (chronic)", 
+             "Atrial Fibrillation", "Pulmonary Hypertension", "Post-op / Acute", "Valve disease (MR/MS/AS)"]
+        )
+        age = st.number_input("Age (years)", min_value=12, max_value=110, value=65, step=1)
+        athlete = True if presentation == "Athlete / Young" else False
+        
+    with p2:
+        rhythm = st.radio("Rhythm", ["Sinus", "AF"], index=0 if presentation != "Atrial Fibrillation" else 1)
+        minimal_mode = st.checkbox("Minimal inputs mode", value=True, 
+                                  help="Show only the most relevant parameters for the selected presentation")
+        auto_eval = st.checkbox("Auto-evaluate when minimal fields present", value=True)
+        
+    with p3:
+        st.write("")  # spacing
+        st.caption("Profile: ASE 2025 thresholds")
+        # Add contextual flags
+        tachycardia = st.checkbox("Tachycardia", value=False, 
+                                 help="HR > 100 bpm - may shorten diastolic intervals")
+        bradycardia = st.checkbox("Bradycardia", value=False, 
+                                 help="HR < 60 bpm - may alter E/A relation")
+        poor_window = st.checkbox("Poor acoustic window", value=False, 
+                                 help="Consider LARS or contrast enhancement")
+
+# Determine minimal fields based on presentation
+def minimal_fields(pres, rhythm):
+    if pres == "Athlete / Young":
+        return ["E", "A", "one_e_prime", "LAVi"]
+    if pres == "Atrial Fibrillation" or rhythm == "AF":
+        return ["IVRT", "TR_vmax", "E_over_e_septal"]
+    if pres == "Valve disease (MR/MS/AS)":
+        return ["Ar_minus_A", "IVRT", "LAVi", "TR_vmax"]
+    if pres == "Pulmonary Hypertension":
+        return ["TR_vmax", "E_over_e_mean", "LAVi"]
+    if pres == "Post-op / Acute":
         return ["E_over_e_mean", "TR_vmax", "LAVi"]
-    if rhythm == "AF":
-        return ["IVRT", "TR_vmax", "DT"]
-    # default sinus minimal
+    # Default
     return ["E", "A", "one_e_prime", "TR_vmax", "LAVi"]
 
-core = minimal_fields_for_context()
+core = minimal_fields(presentation, rhythm)
 
-# show measurement input with Why + How expanders
-st.markdown("## Measurements (enter what you have; advanced items are hidden when Minimal mode is ON)")
-c1, c2, c3 = st.columns([1,1,1])
+# Inputs area with tooltips
+st.markdown("### Measurements")
+st.caption("Minimal mode shows only required fields for selected presentation. Expand for more parameters.")
 
-# helper to decide visibility
+# Create input sections with tooltips
+cols = st.columns(3)
+
 def show_if(name):
-    return (name in core) or (not minimal_mode)
+    return (not minimal_mode) or (name in core)
 
-# left column
-with c1:
-    E = st.number_input("E (cm/s)", min_value=0.0, step=0.1, format="%.1f", disabled=not show_if("E"))
-    A = st.number_input("A (cm/s)", min_value=0.0, step=0.1, format="%.1f", disabled=not show_if("A"))
-    e_sept = st.number_input("e' septal (cm/s)", min_value=0.0, step=0.1, format="%.1f", disabled=not (show_if("one_e_prime") or show_if("e_septal")))
-    e_lat = st.number_input("e' lateral (cm/s)", min_value=0.0, step=0.1, format="%.1f", disabled=not (show_if("one_e_prime") or show_if("e_lateral")))
-    E_e_mean = st.number_input("E/e' (mean)", min_value=0.0, step=0.1, format="%.1f", disabled=not show_if("E_over_e_mean"))
+with cols[0]:
+    st.markdown("#### Mitral Inflow")
+    E = st.number_input(f"E (cm/s) {create_tooltip('E')}", min_value=0.0, step=0.1, format="%.1f", 
+                       disabled=not show_if("E"), key="E_input")
+    A = st.number_input(f"A (cm/s) {create_tooltip('A')}", min_value=0.0, step=0.1, format="%.1f", 
+                       disabled=not show_if("A"), key="A_input")
+    EA = st.number_input("E/A ratio (if pre-calculated)", min_value=0.0, step=0.1, format="%.1f", 
+                        disabled=not show_if("EA"), key="EA_input")
 
-    # Why/how expanders near these inputs
-    with st.expander("Why E / A ?"):
-        st.write("**Why:** The E/A ratio reflects early (E) to late (A) ventricular filling. It helps detect impaired relaxation (low E/A) or restrictive physiology (high E/A).")
-        st.write("**Clinical note:** in young healthy people and athletes, E/A can be >2 physiologically. Use age/athlete context.")
-    with st.expander("How to measure E/A"):
-        st.write("Apical 4-chamber PW Doppler at mitral leaflet tips, average 3 cycles in sinus (5–10 in AF where possible). Optimize alignment; minimize angle error.")
+with cols[1]:
+    st.markdown("#### Tissue Doppler")
+    e_sept = st.number_input(f"e' septal (cm/s) {create_tooltip('e_septal')}", min_value=0.0, step=0.1, format="%.1f", 
+                            disabled=not (show_if("e_septal") or show_if("one_e_prime")), key="e_septal_input")
+    e_lat = st.number_input(f"e' lateral (cm/s) {create_tooltip('e_lateral')}", min_value=0.0, step=0.1, format="%.1f", 
+                           disabled=not (show_if("e_lateral") or show_if("one_e_prime")), key="e_lateral_input")
+    E_over_e_sept = st.number_input(f"E/e' septal {create_tooltip('E_over_e_septal')}", min_value=0.0, step=0.1, format="%.1f", 
+                                   disabled=not show_if("E_over_e_septal"), key="E_over_e_septal_input")
+    E_over_e_lat = st.number_input(f"E/e' lateral {create_tooltip('E_over_e_lateral')}", min_value=0.0, step=0.1, format="%.1f", 
+                                  disabled=not show_if("E_over_e_lateral"), key="E_over_e_lateral_input")
+    E_over_e_mean = st.number_input(f"E/e' mean {create_tooltip('E_over_e_mean')}", min_value=0.0, step=0.1, format="%.1f", 
+                                   disabled=not show_if("E_over_e_mean"), key="E_over_e_mean_input")
 
-# middle column
-with c2:
-    E_e_sept = st.number_input("E/e' (septal)", min_value=0.0, step=0.1, format="%.1f", disabled=not show_if("E_over_e_septal"))
-    E_e_lat = st.number_input("E/e' (lateral)", min_value=0.0, step=0.1, format="%.1f", disabled=not show_if("E_over_e_lateral"))
-    TR_v = st.number_input("TR Vmax (m/s)", min_value=0.0, step=0.1, format="%.2f", disabled=not show_if("TR_vmax"))
-    LAVi = st.number_input("LAVi (mL/m²)", min_value=0.0, step=0.1, format="%.1f", disabled=not show_if("LAVi"))
-    LARS = st.number_input("LA Reservoir Strain LARS (%)", min_value=0.0, step=0.1, format="%.1f", disabled=not show_if("LARS"))
+with cols[2]:
+    st.markdown("#### Other Parameters")
+    TR_vmax = st.number_input(f"TR Vmax (m/s) {create_tooltip('TR_vmax')}", min_value=0.0, step=0.01, format="%.2f", 
+                             disabled=not show_if("TR_vmax"), key="TR_vmax_input")
+    LAVi = st.number_input(f"LAVi (mL/m²) {create_tooltip('LAVi')}", min_value=0.0, step=0.1, format="%.1f", 
+                          disabled=not show_if("LAVi"), key="LAVi_input")
+    LARS = st.number_input(f"LA reservoir strain (LARS %) {create_tooltip('LARS')}", min_value=0.0, step=0.1, format="%.1f", 
+                          disabled=not show_if("LARS"), key="LARS_input")
 
-    with st.expander("Why E/e' ?"):
-        st.write("**Why:** E/e' is a surrogate of LV filling pressure (E = transmitral early; e' = myocardial relaxation). Higher values suggest higher LAP.")
-        st.write("**Note:** use mean E/e' if both septal & lateral available. In AF favor septal or averaged approaches and average multiple beats.")
-    with st.expander("How to measure e' and E/e'"):
-        st.write("Place TDI cursor at septal and lateral mitral annulus in apical 4C. Record peak early diastolic e' velocity (cm/s). For E/e' divide E by e' (mean if both). Use multiple cycles in AF.")
+# Advanced parameters
+with st.expander("Advanced / Optional Parameters"):
+    adv_cols = st.columns(2)
+    
+    with adv_cols[0]:
+        st.markdown("#### Pulmonary Vein Flow")
+        PV_S = st.number_input(f"PV S (cm/s) {create_tooltip('PV_S')}", min_value=0.0, step=0.1, format="%.1f", key="PV_S_input")
+        PV_D = st.number_input(f"PV D (cm/s) {create_tooltip('PV_D')}", min_value=0.0, step=0.1, format="%.1f", key="PV_D_input")
+        Ar_minus_A = st.number_input(f"PV Ar - MV A (ms) {create_tooltip('Ar_minus_A')}", min_value=0.0, step=1, format="%.0f", 
+                                    disabled=not show_if("Ar_minus_A"), key="Ar_minus_A_input")
+    
+    with adv_cols[1]:
+        st.markdown("#### Other Advanced Parameters")
+        IVRT = st.number_input(f"IVRT (ms) {create_tooltip('IVRT')}", min_value=0.0, step=1, format="%.0f", key="IVRT_input")
+        DT = st.number_input(f"DT (ms) {create_tooltip('DT')}", min_value=0.0, step=1, format="%.0f", key="DT_input")
+        EDV = st.number_input(f"PV EDV (cm/s) {create_tooltip('EDV')}", min_value=0.0, step=0.1, format="%.1f", key="EDV_input")
+        Vp = st.number_input(f"Vp (cm/s) {create_tooltip('Vp')}", min_value=0.0, step=0.1, format="%.1f", key="Vp_input")
+        E_over_Vp = st.number_input(f"E/Vp {create_tooltip('E_over_Vp')}", min_value=0.0, step=0.1, format="%.1f", key="E_over_Vp_input")
+        TEe = st.number_input(f"TE - e' (ms) {create_tooltip('TE_minus_e')}", min_value=0.0, step=1, format="%.0f", key="TE_minus_e_input")
+        
+    st.markdown("#### Contextual Parameters")
+    ctx_cols = st.columns(3)
+    with ctx_cols[0]:
+        cycles = st.number_input("Averaged cycles (AF)", min_value=0, step=1, format="%d", key="cycles_input")
+    with ctx_cols[1]:
+        HR = st.number_input("HR (bpm)", min_value=0, step=1, format="%d", key="HR_input")
+    with ctx_cols[2]:
+        LVEF = st.number_input("LVEF (%)", min_value=0, max_value=100, step=1, format="%d", key="LVEF_input")
 
-# right column
-with c3:
-    PV_S = st.number_input("Pulmonary vein S (cm/s)", min_value=0.0, step=0.1, format="%.1f", disabled=not show_if("PV_S"))
-    PV_D = st.number_input("Pulmonary vein D (cm/s)", min_value=0.0, step=0.1, format="%.1f", disabled=not show_if("PV_D"))
-    ArA = st.number_input("PV Ar - MV A (ms)", min_value=0.0, step=1.0, format="%.0f", disabled=not show_if("Ar_minus_A"))
-    IVRT = st.number_input("IVRT (ms)", min_value=0.0, step=1.0, format="%.0f", disabled=not show_if("IVRT"))
-    DT = st.number_input("E-wave decel time DT (ms)", min_value=0.0, step=1.0, format="%.0f", disabled=not show_if("DT"))
-
-    with st.expander("Why pulmonary veins (S/D) and Ar-A?"):
-        st.write("**Why:** Pulmonary vein S/D ratio and Ar-A (PV Ar duration - MV A duration) offer information on LA pressure and timing — useful when transmitral Doppler is confounded (MR, AF). Low S/D or prolonged Ar-A suggests elevated LAP.")
-    with st.expander("How to measure pulmonary vein flow & Ar-A"):
-        st.write("Use apical 4C, sample pulmonary vein with PW Doppler lateral to LA appendage. Measure systolic (S) and diastolic (D) velocities, and PV Ar duration vs MV A duration (Ar-A). Average multiple beats in AF.")
-
-# advanced zone
-with st.expander("Advanced / optional measurements (showing for completeness)"):
-    EDV = st.number_input("PV diastolic vel EDV (cm/s) (AF)", min_value=0.0, step=0.1, format="%.1f")
-    Vp = st.number_input("Vp (cm/s) (flow propagation speed for E/Vp)", min_value=0.0, step=0.1, format="%.1f")
-    E_Vp = st.number_input("E/Vp (if precomputed)", min_value=0.0, step=0.1, format="%.1f")
-    TEe = st.number_input("TE - e' (ms)", min_value=0.0, step=1.0, format="%.0f")
-    LVEF = st.number_input("LVEF (%) (optional)", min_value=0.0, max_value=90.0, step=1.0, format="%.0f")
-    HR = st.number_input("Heart rate (bpm)", min_value=0, step=1, format="%d")
-    cycles = st.number_input("Averaged cycles (esp. AF)", min_value=0, step=1, format="%d")
-
-# assemble measurement dict
+# Measurement dictionary
 meas = {
-    "E": E or None, "A": A or None, "EA": None,
+    "E": E or None, "A": A or None, "EA": EA or None,
     "e_septal": e_sept or None, "e_lateral": e_lat or None, "e_mean": None,
-    "E_over_e_mean": E_e_mean or None, "E_over_e_septal": E_e_sept or None, "E_over_e_lateral": E_e_lat or None,
-    "TR_vmax": TR_v or None, "LAVi": LAVi or None, "LARS": LARS or None,
-    "PV_S": PV_S or None, "PV_D": PV_D or None, "pulm_SD": None,
-    "Ar_minus_A": ArA or None, "TE_minus_e": TEe or None, "IVRT": IVRT or None,
-    "EDV": EDV or None, "Vp": Vp or None, "E_over_Vp": E_Vp or None,
-    "DT": DT or None, "HR": HR or None, "cycles_averaged": cycles or None,
+    "E_over_e_mean": E_over_e_mean or None, "E_over_e_septal": E_over_e_sept or None, 
+    "E_over_e_lateral": E_over_e_lat or None, "TR_vmax": TR_vmax or None, 
+    "LAVi": LAVi or None, "LARS": LARS or None, "PV_S": PV_S or None, 
+    "PV_D": PV_D or None, "pulm_SD": None, "Ar_minus_A": Ar_minus_A or None, 
+    "TE_minus_e": TEe or None, "IVRT": IVRT or None, "EDV": EDV or None, 
+    "Vp": Vp or None, "E_over_Vp": E_over_Vp or None, "DT": DT or None, 
+    "HR": HR or None, "cycles_averaged": cycles or None, "LVEF": LVEF or None
 }
 
 ctx = {
-    "rhythm": "AF" if rhythm == "AF" else "sinus",
-    "MR_sev": MR_sev, "MS_present": MS_present, "MAC_modsev": MAC_modsev,
-    "aortic": aortic, "HCM": HCM, "amyloid_rcm": amyloid_rcm,
-    "LVAD": LVAD, "heart_tx": heart_tx, "acute": acute, "precap_PH": precap_PH,
-    "tachycardia": tachy, "bradycardia": brady, "poor_acoustic_window": poor_win,
+    "rhythm": "AF" if rhythm == "AF" else "sinus", 
+    "tachycardia": tachycardia, 
+    "bradycardia": bradycardia, 
+    "poor_acoustic_window": poor_window
 }
 
-# determine minimal required fields given core
+# Check for minimal required fields
 def needed_for_minimal(core_fields, m):
-    needed = set()
+    needed = []
     for f in core_fields:
         if f == "one_e_prime":
             if not (nz(m.get("e_septal")) or nz(m.get("e_lateral"))):
-                needed.add("e' (septal or lateral)")
+                needed.append("e' (septal or lateral)")
         elif f == "E":
             if not nz(m.get("E")):
-                needed.add("E")
+                needed.append("E")
         elif f == "A":
             if not nz(m.get("A")):
-                needed.add("A")
+                needed.append("A")
         elif f == "E_over_e_mean":
             if not nz(m.get("E_over_e_mean")):
-                needed.add("E/e' (mean)")
+                needed.append("E/e' (mean)")
         else:
-            map_key = {"TR_vmax":"TR Vmax", "LAVi":"LAVi", "LARS":"LARS", "Ar_minus_A":"PV Ar - MV A", "IVRT":"IVRT", "DT":"DT"}
+            mapping = {
+                "TR_vmax": "TR Vmax", "LAVi": "LAVi", "LARS": "LARS", 
+                "Ar_minus_A": "PV Ar-MV A", "IVRT": "IVRT", "DT": "DT"
+            }
             if not nz(m.get(f)):
-                needed.add(map_key.get(f, f))
+                needed.append(mapping.get(f, f))
     return needed
 
 needed = needed_for_minimal(core, meas)
 
-# Evaluate automatically or by button
-def render_results_block(result):
-    st.markdown("## Results — PRVG / LAP Estimation")
-    badge = result["status"]
-    if badge == "High":
-        st.error(f"Status: {badge}")
-    elif badge == "PossibleHigh":
-        st.warning(f"Status: {badge}")
-    elif badge == "Normal":
-        st.success(f"Status: {badge}")
-    else:
-        st.info(f"Status: {badge}")
-
-    cols = st.columns(4)
-    cols[0].metric("Grade", result["grade"])
-    cols[1].metric("Confidence", result["confidence"])
-    cols[2].metric("Triggered rules", str(len(result["fired"])))
-    cols[3].metric("Missing critical", str(len(result["missing"])))
-
-    st.markdown("### Why (which rules fired & rationale)")
-    if result["fired"]:
-        for r in result["fired"]:
-            st.write(f"- {r}")
-    else:
-        st.write("- No specific surrogate rules triggered.")
-
-    if result.get("narrative"):
-        st.markdown("**Rationale / narrative:**")
-        st.write(result["narrative"])
-
-    if result.get("qc"):
-        st.markdown("**Acquisition / QC notes:**")
-        for w in result["qc"]:
-            st.caption("• " + w)
-
-    if result.get("reco"):
-        st.markdown("**Recommendations:**")
-        for rec in result["reco"]:
-            st.write("• " + rec)
-
-    st.markdown("---")
-    # compact "Why details" that show thresholds used
-    with st.expander("Show thresholds and exact checks used (for audit)"):
-        st.write("Profile:", profile)
-        st.write("Thresholds used:")
-        st.json(PROFILES[profile])
-        st.write("Measurements provided:")
-        st.json(meas)
-
-# run
-if auto_eval:
-    if len(needed) == 0:
-        result = evaluate_master(meas, ctx, profile, age, athlete)
-        render_results_block(result)
-    else:
-        st.info("Auto-evaluation waiting for minimal fields: " + ", ".join(sorted(needed)))
-        if st.button("Evaluate now (even if incomplete)"):
-            result = evaluate_master(meas, ctx, profile, age, athlete)
-            render_results_block(result)
+# Evaluate or wait
+if auto_eval and len(needed) == 0:
+    result = evaluate_PRVG(meas, ctx, age, athlete)
 else:
-    if st.button("Evaluate"):
-        result = evaluate_master(meas, ctx, profile, age, athlete)
-        render_results_block(result)
+    result = None
 
-# finishing helpful text
+# Show evaluate controls
+colA, colB, colC = st.columns([2, 1, 1])
+with colA:
+    if not auto_eval:
+        if st.button("Evaluate now", key="eval"):
+            result = evaluate_PRVG(meas, ctx, age, athlete)
+with colB:
+    st.write("")
+    if st.button("Clear inputs"):
+        st.experimental_rerun()
+with colC:
+    st.write("")
+    st.caption("Auto-evaluation " + ("enabled" if auto_eval else "disabled"))
+
+# If auto-eval not ready show info
+if auto_eval and result is None:
+    st.info("Auto-evaluation waits for minimal fields: " + ", ".join(needed))
+
+# Results area
+st.markdown("### Assessment Result")
+if result is None:
+    st.info("No evaluation performed yet. Provide required measurements above.")
+else:
+    # Color card
+    status = result["status"]
+    if status == "High":
+        cls = "status-high"
+    elif status == "PossibleHigh":
+        cls = "status-possible"
+    elif status == "Normal":
+        cls = "status-normal"
+    else:
+        cls = "status-indet"
+    
+    st.markdown(f"""
+    <div class='result-card {cls}'>
+        <h3 style='margin:4px'>{status} Probability of Elevated Filling Pressures</h3>
+        <div style='font-size:15px'>{result.get('narrative','')}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Metrics tiles
+    t1, t2, t3, t4 = st.columns(4)
+    t1.metric("Diastolic Grade", result.get("grade", "NA"))
+    t2.metric("Confidence", result.get("confidence", ""))
+    t3.metric("Triggered Rules", str(len(result.get("fired", []))))
+    t4.metric("Missing Params", str(len(result.get("missing", []))))
+
+    # Detailed reasoning
+    with st.expander("Detailed Medical Reasoning", expanded=True):
+        if result.get("reasoning"):
+            st.markdown("#### Reasoning Steps:")
+            for i, reason in enumerate(result["reasoning"], 1):
+                st.markdown(f"{i}. {reason}")
+        
+        if result.get("fired"):
+            st.markdown("#### Rules Triggered:")
+            for r in result["fired"]:
+                st.write(f"- {r}")
+        
+        if result.get("qc"):
+            st.markdown("#### Acquisition Notes:")
+            for q in result["qc"]:
+                st.info(f"• {q}")
+
+    # Recommendations
+    with st.expander("Clinical Recommendations"):
+        if result.get("reco"):
+            for rec in result["reco"]:
+                st.write(f"• {rec}")
+        
+        # Additional context-specific recommendations
+        if result["status"] == "High":
+            st.write("• Consider correlation with NT-proBNP/BNP levels if available.")
+            st.write("• Evaluate for signs and symptoms of heart failure.")
+            if ctx["rhythm"] == "AF":
+                st.write("• In AF, consider rate control strategy to improve diastolic filling.")
+        
+        if athlete and result["status"] in ["High", "PossibleHigh"]:
+            st.write("• In athletes, consider exercise stress echocardiography to distinguish physiological from pathological adaptation.")
+
+    # Parameter explanations
+    with st.expander("Parameter Explanations"):
+        st.markdown("""
+        #### Why These Parameters Matter
+        Assessment of left atrial pressure (LAP) requires integration of multiple echocardiographic parameters 
+        as no single measurement is perfectly accurate. The algorithm follows ASE/EACVI guidelines to integrate
+        these parameters into a comprehensive assessment.
+        """)
+        
+        used_params = [k for k, v in meas.items() if v is not None and k in PARAMETER_EXPLANATIONS]
+        
+        if used_params:
+            st.markdown("##### Parameters Provided:")
+            for param in used_params:
+                exp = PARAMETER_EXPLANATIONS[param]
+                st.markdown(f"**{param}**")
+                st.markdown(f"<div class='why-box'>{exp['why']}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='how-box'>{exp['how']}</div>", unsafe_allow_html=True)
+        else:
+            st.info("No parameters with explanations were provided.")
+
+    # Export & report section
+    st.markdown("---")
+    st.markdown("#### Export Report")
+    
+    # summary text
+    now = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+    summary_lines = [
+        f"PRVG Assistant Comprehensive Report — {now}",
+        f"Presentation: {presentation} (Age {age})  Rhythm: {ctx['rhythm']}",
+        f"Result: {result['status']}  Grade: {result.get('grade','NA')}  Confidence: {result.get('confidence','')}",
+        "",
+        "Narrative:",
+        result.get('narrative', ''),
+        "",
+        "Reasoning:",
+    ]
+    
+    if result.get("reasoning"):
+        for i, reason in enumerate(result["reasoning"], 1):
+            summary_lines.append(f"{i}. {reason}")
+    
+    summary_lines.extend([
+        "",
+        "Triggered rules: " + (", ".join(result.get("fired", [])) or "none"),
+        "Recommendations:",
+    ])
+    
+    if result.get("reco"):
+        for rec in result["reco"]:
+            summary_lines.append(f"- {rec}")
+    
+    summary_lines.extend([
+        "",
+        "Measurements provided:"
+    ])
+    
+    for k, v in meas.items():
+        if v is not None:
+            summary_lines.append(f"- {k}: {v}")
+    
+    summary_text = "\n".join(summary_lines)
+    
+    # Create two columns for export buttons
+    exp_col1, exp_col2 = st.columns(2)
+    
+    with exp_col1:
+        st.download_button("Download Full Report (Text)", data=summary_text, 
+                          file_name="prvg_comprehensive_report.txt", mime="text/plain")
+    
+    with exp_col2:
+        st.download_button("Download Data (CSV)", data=pd.DataFrame([meas]).to_csv(index=False), 
+                          file_name="prvg_data.csv", mime="text/csv")
+    
+    st.text_area("Report Summary (for charting)", value=summary_text, height=250)
+
+# Footer
 st.markdown("---")
-st.caption("Clinical decision support only. Noninvasive LAP estimates have limitations. Follow local protocols and consider natriuretic peptides or invasive hemodynamics when management hinges on exact filling pressures.")
+st.markdown("""
+<div class='footer'>
+This tool is for clinical decision support only. Noninvasive estimates of filling pressures have limitations — 
+always correlate with clinical findings and consider natriuretic peptides or invasive hemodynamics when management depends on precise LAP assessment.
+<br><br>
+Based on ASE/EACVI 2016 Guidelines and subsequent literature.
+</div>
+""", unsafe_allow_html=True)

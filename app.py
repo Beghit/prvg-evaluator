@@ -74,8 +74,9 @@ st.markdown("""
 }
 .tooltip-icon {
     color: #3b82f6;
-    cursor: pointer;
+    cursor: help;
     margin-left: 4px;
+    display: inline-block;
 }
 .parameter-group {
     background-color: #f8f9fa;
@@ -133,6 +134,47 @@ st.markdown("""
     padding: 12px;
     margin: 8px 0;
     color: #000000;
+}
+/* Tooltip container */
+.tooltip {
+  position: relative;
+  display: inline-block;
+  border-bottom: 1px dotted black;
+}
+
+.tooltip .tooltiptext {
+  visibility: hidden;
+  width: 300px;
+  background-color: #555;
+  color: #fff;
+  text-align: left;
+  border-radius: 6px;
+  padding: 8px;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  margin-left: -150px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-size: 14px;
+  font-weight: normal;
+}
+
+.tooltip .tooltiptext::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #555 transparent transparent transparent;
+}
+
+.tooltip:hover .tooltiptext {
+  visibility: visible;
+  opacity: 1;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -494,8 +536,17 @@ def create_tooltip(parameter_name):
     explanation = PARAMETER_EXPLANATIONS.get(parameter_name, {})
     why = explanation.get("why", "No explanation available.")
     how = explanation.get("how", "No measurement instructions available.")
+    pitfalls = explanation.get("pitfalls", "")
+    
+    tooltip_content = f"<b>Why it matters:</b> {why}<br><br><b>How to measure:</b> {how}"
+    if pitfalls:
+        tooltip_content += f"<br><br><b>Pitfalls:</b> {pitfalls}"
+    
     tooltip_html = f"""
-    <span class="tooltip-icon" title="{why}&#10;&#10;How to measure: {how}">ℹ️</span>
+    <div class="tooltip">
+        ℹ️
+        <span class="tooltiptext">{tooltip_content}</span>
+    </div>
     """
     return tooltip_html
 # Atomic rule checks
@@ -922,55 +973,55 @@ elif st.session_state.current_step == 2:
         st.markdown(f"#### {t('mitral_inflow')}")
         # Initialize session state for inputs if not exists
         if 'E_input' not in st.session_state:
-            st.session_state.E_input = None
+            st.session_state.E_input = 0.0
         if 'A_input' not in st.session_state:
-            st.session_state.A_input = None
+            st.session_state.A_input = 0.0
         if 'EA_input' not in st.session_state:
-            st.session_state.EA_input = None
+            st.session_state.EA_input = 0.0
         E = st.number_input(f"E (cm/s) {create_tooltip('E')}", min_value=0.0, step=0.1, format="%.1f", 
-                           disabled=not show_if("E"), key="E_input", value=st.session_state.E_input)
+                           disabled=not show_if("E"), key="E_input", value=float(st.session_state.E_input) if st.session_state.E_input is not None else 0.0)
         A = st.number_input(f"A (cm/s) {create_tooltip('A')}", min_value=0.0, step=0.1, format="%.1f", 
-                           disabled=not show_if("A"), key="A_input", value=st.session_state.A_input)
+                           disabled=not show_if("A"), key="A_input", value=float(st.session_state.A_input) if st.session_state.A_input is not None else 0.0)
         EA = st.number_input("E/A ratio (if pre-calculated)", min_value=0.0, step=0.1, format="%.1f", 
-                            disabled=not show_if("EA"), key="EA_input", value=st.session_state.EA_input)
+                            disabled=not show_if("EA"), key="EA_input", value=float(st.session_state.EA_input) if st.session_state.EA_input is not None else 0.0)
     with cols[1]:
         st.markdown(f"#### {t('tissue_doppler')}")
         # Initialize session state for inputs if not exists
         if 'e_septal_input' not in st.session_state:
-            st.session_state.e_septal_input = None
+            st.session_state.e_septal_input = 0.0
         if 'e_lateral_input' not in st.session_state:
-            st.session_state.e_lateral_input = None
+            st.session_state.e_lateral_input = 0.0
         if 'E_over_e_septal_input' not in st.session_state:
-            st.session_state.E_over_e_septal_input = None
+            st.session_state.E_over_e_septal_input = 0.0
         if 'E_over_e_lateral_input' not in st.session_state:
-            st.session_state.E_over_e_lateral_input = None
+            st.session_state.E_over_e_lateral_input = 0.0
         if 'E_over_e_mean_input' not in st.session_state:
-            st.session_state.E_over_e_mean_input = None
+            st.session_state.E_over_e_mean_input = 0.0
         e_sept = st.number_input(f"e' septal (cm/s) {create_tooltip('e_septal')}", min_value=0.0, step=0.1, format="%.1f", 
-                                disabled=not (show_if("e_septal") or show_if("one_e_prime")), key="e_septal_input", value=st.session_state.e_septal_input)
+                                disabled=not (show_if("e_septal") or show_if("one_e_prime")), key="e_septal_input", value=float(st.session_state.e_septal_input) if st.session_state.e_septal_input is not None else 0.0)
         e_lat = st.number_input(f"e' lateral (cm/s) {create_tooltip('e_lateral')}", min_value=0.0, step=0.1, format="%.1f", 
-                               disabled=not (show_if("e_lateral") or show_if("one_e_prime")), key="e_lateral_input", value=st.session_state.e_lateral_input)
+                               disabled=not (show_if("e_lateral") or show_if("one_e_prime")), key="e_lateral_input", value=float(st.session_state.e_lateral_input) if st.session_state.e_lateral_input is not None else 0.0)
         E_over_e_sept = st.number_input(f"E/e' septal {create_tooltip('E_over_e_septal')}", min_value=0.0, step=0.1, format="%.1f", 
-                                       disabled=not show_if("E_over_e_septal"), key="E_over_e_septal_input", value=st.session_state.E_over_e_septal_input)
+                                       disabled=not show_if("E_over_e_septal"), key="E_over_e_septal_input", value=float(st.session_state.E_over_e_septal_input) if st.session_state.E_over_e_septal_input is not None else 0.0)
         E_over_e_lat = st.number_input(f"E/e' lateral {create_tooltip('E_over_e_lateral')}", min_value=0.0, step=0.1, format="%.1f", 
-                                      disabled=not show_if("E_over_e_lateral"), key="E_over_e_lateral_input", value=st.session_state.E_over_e_lateral_input)
+                                      disabled=not show_if("E_over_e_lateral"), key="E_over_e_lateral_input", value=float(st.session_state.E_over_e_lateral_input) if st.session_state.E_over_e_lateral_input is not None else 0.0)
         E_over_e_mean = st.number_input(f"E/e' mean {create_tooltip('E_over_e_mean')}", min_value=0.0, step=0.1, format="%.1f", 
-                                       disabled=not show_if("E_over_e_mean"), key="E_over_e_mean_input", value=st.session_state.E_over_e_mean_input)
+                                       disabled=not show_if("E_over_e_mean"), key="E_over_e_mean_input", value=float(st.session_state.E_over_e_mean_input) if st.session_state.E_over_e_mean_input is not None else 0.0)
     with cols[2]:
         st.markdown(f"#### {t('other_params')}")
         # Initialize session state for inputs if not exists
         if 'TR_vmax_input' not in st.session_state:
-            st.session_state.TR_vmax_input = None
+            st.session_state.TR_vmax_input = 0.0
         if 'LAVi_input' not in st.session_state:
-            st.session_state.LAVi_input = None
+            st.session_state.LAVi_input = 0.0
         if 'LARS_input' not in st.session_state:
-            st.session_state.LARS_input = None
+            st.session_state.LARS_input = 0.0
         TR_vmax = st.number_input(f"TR Vmax (m/s) {create_tooltip('TR_vmax')}", min_value=0.0, step=0.01, format="%.2f", 
-                                 disabled=not show_if("TR_vmax"), key="TR_vmax_input", value=st.session_state.TR_vmax_input)
+                                 disabled=not show_if("TR_vmax"), key="TR_vmax_input", value=float(st.session_state.TR_vmax_input) if st.session_state.TR_vmax_input is not None else 0.0)
         LAVi = st.number_input(f"LAVi (mL/m²) {create_tooltip('LAVi')}", min_value=0.0, step=0.1, format="%.1f", 
-                              disabled=not show_if("LAVi"), key="LAVi_input", value=st.session_state.LAVi_input)
+                              disabled=not show_if("LAVi"), key="LAVi_input", value=float(st.session_state.LAVi_input) if st.session_state.LAVi_input is not None else 0.0)
         LARS = st.number_input(f"LA reservoir strain (LARS %) {create_tooltip('LARS')}", min_value=0.0, step=0.1, format="%.1f", 
-                              disabled=not show_if("LARS"), key="LARS_input", value=st.session_state.LARS_input)
+                              disabled=not show_if("LARS"), key="LARS_input", value=float(st.session_state.LARS_input) if st.session_state.LARS_input is not None else 0.0)
     # Advanced parameters
     with st.expander(t("advanced_params")):
         adv_cols = st.columns(2)
@@ -978,68 +1029,64 @@ elif st.session_state.current_step == 2:
             st.markdown(f"#### {t('pulmonary_vein')}")
             # Initialize session state for inputs if not exists
             if 'PV_S_input' not in st.session_state:
-                st.session_state.PV_S_input = None
+                st.session_state.PV_S_input = 0
             if 'PV_D_input' not in st.session_state:
-                st.session_state.PV_D_input = None
+                st.session_state.PV_D_input = 0
             if 'Ar_minus_A_input' not in st.session_state:
-                st.session_state.Ar_minus_A_input = None
+                st.session_state.Ar_minus_A_input = 0
             PV_S = st.number_input(f"PV S (cm/s) {create_tooltip('PV_S')}", min_value=0.0, step=0.1, format="%.1f", 
-                                  key="PV_S_input", value=st.session_state.PV_S_input)
+                                  key="PV_S_input", value=float(st.session_state.PV_S_input) if st.session_state.PV_S_input is not None else 0.0)
             PV_D = st.number_input(f"PV D (cm/s) {create_tooltip('PV_D')}", min_value=0.0, step=0.1, format="%.1f", 
-                                  key="PV_D_input", value=st.session_state.PV_D_input)
-            # Fixed: Changed min_value from 0.0 to 0 and format from "%.0f" to "%d"
+                                  key="PV_D_input", value=float(st.session_state.PV_D_input) if st.session_state.PV_D_input is not None else 0.0)
             Ar_minus_A = st.number_input(f"PV Ar - MV A (ms) {create_tooltip('Ar_minus_A')}", min_value=0, step=1, format="%d",
-                                        disabled=not show_if("Ar_minus_A"), key="Ar_minus_A_input", value=st.session_state.Ar_minus_A_input)
+                                        disabled=not show_if("Ar_minus_A"), key="Ar_minus_A_input", value=int(st.session_state.Ar_minus_A_input) if st.session_state.Ar_minus_A_input is not None else 0)
         with adv_cols[1]:
             st.markdown(f"#### {t('other_advanced')}")
             # Initialize session state for inputs if not exists
             if 'IVRT_input' not in st.session_state:
-                st.session_state.IVRT_input = None
+                st.session_state.IVRT_input = 0
             if 'DT_input' not in st.session_state:
-                st.session_state.DT_input = None
+                st.session_state.DT_input = 0
             if 'EDV_input' not in st.session_state:
-                st.session_state.EDV_input = None
+                st.session_state.EDV_input = 0.0
             if 'Vp_input' not in st.session_state:
-                st.session_state.Vp_input = None
+                st.session_state.Vp_input = 0.0
             if 'E_over_Vp_input' not in st.session_state:
-                st.session_state.E_over_Vp_input = None
+                st.session_state.E_over_Vp_input = 0.0
             if 'TE_minus_e_input' not in st.session_state:
-                st.session_state.TE_minus_e_input = None
-            # Fixed: Changed min_value from 0.0 to 0 and format from "%.0f" to "%d"
+                st.session_state.TE_minus_e_input = 0
             IVRT = st.number_input(f"IVRT (ms) {create_tooltip('IVRT')}", min_value=0, step=1, format="%d",
-                                  key="IVRT_input", value=st.session_state.IVRT_input)
-            # Fixed: Changed min_value from 0.0 to 0 and format from "%.0f" to "%d"
+                                  key="IVRT_input", value=int(st.session_state.IVRT_input) if st.session_state.IVRT_input is not None else 0)
             DT = st.number_input(f"DT (ms) {create_tooltip('DT')}", min_value=0, step=1, format="%d",
-                                key="DT_input", value=st.session_state.DT_input)
+                                key="DT_input", value=int(st.session_state.DT_input) if st.session_state.DT_input is not None else 0)
             EDV = st.number_input(f"PV EDV (cm/s) {create_tooltip('EDV')}", min_value=0.0, step=0.1, format="%.1f", 
-                                 key="EDV_input", value=st.session_state.EDV_input)
+                                 key="EDV_input", value=float(st.session_state.EDV_input) if st.session_state.EDV_input is not None else 0.0)
             Vp = st.number_input(f"Vp (cm/s) {create_tooltip('Vp')}", min_value=0.0, step=0.1, format="%.1f", 
-                                key="Vp_input", value=st.session_state.Vp_input)
+                                key="Vp_input", value=float(st.session_state.Vp_input) if st.session_state.Vp_input is not None else 0.0)
             E_over_Vp = st.number_input(f"E/Vp {create_tooltip('E_over_Vp')}", min_value=0.0, step=0.1, format="%.1f", 
-                                       key="E_over_Vp_input", value=st.session_state.E_over_Vp_input)
-            # Fixed: Changed min_value from 0.0 to 0 and format from "%.0f" to "%d"
+                                       key="E_over_Vp_input", value=float(st.session_state.E_over_Vp_input) if st.session_state.E_over_Vp_input is not None else 0.0)
             TEe = st.number_input(f"TE - e' (ms) {create_tooltip('TE_minus_e')}", min_value=0, step=1, format="%d",
-                                 key="TE_minus_e_input", value=st.session_state.TE_minus_e_input)
+                                 key="TE_minus_e_input", value=int(st.session_state.TE_minus_e_input) if st.session_state.TE_minus_e_input is not None else 0)
         st.markdown(f"#### {t('contextual_params')}")
         ctx_cols = st.columns(3)
         with ctx_cols[0]:
             # Initialize session state for inputs if not exists
             if 'cycles_input' not in st.session_state:
-                st.session_state.cycles_input = None
+                st.session_state.cycles_input = 0
             cycles = st.number_input("Averaged cycles (AF)", min_value=0, step=1, format="%d", 
-                                    key="cycles_input", value=st.session_state.cycles_input)
+                                    key="cycles_input", value=int(st.session_state.cycles_input) if st.session_state.cycles_input is not None else 0)
         with ctx_cols[1]:
             # Initialize session state for inputs if not exists
             if 'HR_input' not in st.session_state:
-                st.session_state.HR_input = None
+                st.session_state.HR_input = 0
             HR = st.number_input("HR (bpm)", min_value=0, step=1, format="%d", 
-                                key="HR_input", value=st.session_state.HR_input)
+                                key="HR_input", value=int(st.session_state.HR_input) if st.session_state.HR_input is not None else 0)
         with ctx_cols[2]:
             # Initialize session state for inputs if not exists
             if 'LVEF_input' not in st.session_state:
-                st.session_state.LVEF_input = None
+                st.session_state.LVEF_input = 0
             LVEF = st.number_input("LVEF (%)", min_value=0, max_value=100, step=1, format="%d", 
-                                  key="LVEF_input", value=st.session_state.LVEF_input)
+                                  key="LVEF_input", value=int(st.session_state.LVEF_input) if st.session_state.LVEF_input is not None else 0)
     # Measurement dictionary
     meas = {
         "E": E or None, "A": A or None, "EA": EA or None,
@@ -1210,7 +1257,7 @@ elif st.session_state.current_step == 3:
         # Get measurements from session state
         used_params = []
         for key in st.session_state.keys():
-            if key.endswith('_input') and st.session_state[key] is not None:
+            if key.endswith('_input') and st.session_state[key] is not None and st.session_state[key] != 0:
                 param_name = key.replace('_input', '')
                 if param_name in PARAMETER_EXPLANATIONS:
                     used_params.append(param_name)
@@ -1257,7 +1304,7 @@ elif st.session_state.current_step == 3:
     ])
     # Get measurements from session state
     for key in st.session_state.keys():
-        if key.endswith('_input') and st.session_state[key] is not None:
+        if key.endswith('_input') and st.session_state[key] is not None and st.session_state[key] != 0:
             param_name = key.replace('_input', '')
             summary_lines.append(f"- {param_name}: {st.session_state[key]}")
     summary_text = "\n".join(summary_lines)
@@ -1270,7 +1317,7 @@ elif st.session_state.current_step == 3:
         # Create data for CSV export
         data_dict = {}
         for key in st.session_state.keys():
-            if key.endswith('_input') and st.session_state[key] is not None:
+            if key.endswith('_input') and st.session_state[key] is not None and st.session_state[key] != 0:
                 param_name = key.replace('_input', '')
                 data_dict[param_name] = [st.session_state[key]]
         # Add context information

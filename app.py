@@ -72,11 +72,6 @@ st.markdown("""
     margin: 8px 0;
     color: #000000;
 }
-.tooltip-icon {
-    color: #3b82f6;
-    cursor: pointer;
-    margin-left: 4px;
-}
 .parameter-group {
     background-color: #f8f9fa;
     padding: 12px;
@@ -1356,8 +1351,6 @@ elif st.session_state.current_step == 3:
         if result["status"] == "High":
             st.write("• Consider correlation with NT-proBNP/BNP levels if available.")
             st.write("• Evaluate for signs and symptoms of heart failure.")
-            if ctx["rhythm"] == "AF":
-                st.write("• In AF, consider rate control strategy to improve diastolic filling.")
         if athlete and result["status"] in ["High", "PossibleHigh"]:
             st.write("• In athletes, consider exercise stress echocardiography to distinguish physiological from pathological adaptation.")
     

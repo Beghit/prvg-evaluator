@@ -4,13 +4,11 @@
 import streamlit as st
 from math import isfinite
 import pandas as pd
-# import json # Not used
-# from datetime import datetime # Not used directly
-# import base64 # Not used
-# from io import BytesIO # Not used
-
+import json
+from datetime import datetime
+import base64
+from io import BytesIO
 st.set_page_config(page_title="PRVG Assistant", page_icon="🫀", layout="wide")
-
 # -----------------------
 # CSS Styling - Simplified
 # -----------------------
@@ -76,7 +74,7 @@ st.markdown("""
 }
 .tooltip-icon {
     color: #3b82f6;
-    cursor: help;
+    cursor: pointer;
     margin-left: 4px;
 }
 .parameter-group {
@@ -136,50 +134,20 @@ st.markdown("""
     margin: 8px 0;
     color: #000000;
 }
-/* Custom tooltip for explanations */
-.custom-tooltip {
-    position: relative;
-    display: inline-block;
-    cursor: help;
+.parameter-info {
+    background-color: #e1f0fa;
+    border-left: 4px solid #3b82f6;
+    padding: 12px;
+    border-radius: 4px;
+    margin-top: 8px;
+    color: #000000;
 }
-
-.custom-tooltip .tooltiptext {
-    visibility: hidden;
-    width: 300px;
-    background-color: #555;
-    color: #fff;
-    text-align: left;
-    border-radius: 6px;
-    padding: 8px;
-    position: absolute;
-    z-index: 1;
-    bottom: 125%;
-    left: 50%;
-    margin-left: -150px;
-    opacity: 0;
-    transition: opacity 0.3s;
-    font-size: 14px;
-    font-weight: normal;
-}
-
-.custom-tooltip .tooltiptext::after {
-    content: "";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    margin-left: -5px;
-    border-width: 5px;
-    border-style: solid;
-    border-color: #555 transparent transparent transparent;
-}
-
-.custom-tooltip:hover .tooltiptext {
-    visibility: visible;
-    opacity: 1;
+.parameter-info h4 {
+    margin-top: 0;
+    margin-bottom: 8px;
 }
 </style>
 """, unsafe_allow_html=True)
-
 # -----------------------
 # Internationalization (English and French only)
 # -----------------------
@@ -236,11 +204,8 @@ LANGUAGES = {
         "algorithm_flow": "Algorithm Decision Flow",
         "references": "References",
         "disclaimer": "Disclaimer: This tool is for clinical decision support only and should not be used for standalone diagnosis.",
-        # Updated result texts for clarity
-        "result_high": "High Probability of Elevated Filling Pressures",
-        "result_possible": "Possible Elevated Filling Pressures",
-        "result_normal": "Normal Filling Pressure Likelihood",
-        "result_indet": "Indeterminate Assessment"
+        "parameter_info_title": "Parameter Information",
+        "parameter_info_desc": "Click on any parameter name to see detailed information below."
     },
     "French": {
         "title": "Assistant PRVG — Évaluation hémodynamique échographique complète",
@@ -294,24 +259,20 @@ LANGUAGES = {
         "algorithm_flow": "Flux de décision de l'algorithme",
         "references": "Références",
         "disclaimer": "Avertissement: Cet outil est destiné à l'aide à la décision clinique et ne doit pas être utilisé pour un diagnóstico autonome.",
-        # Updated result texts for clarity
-        "result_high": "Forte probabilité de pressions de remplissage élevées",
-        "result_possible": "Pressions de remplissage possiblement élevées",
-        "result_normal": "Probabilité normale de pressions de remplissage",
-        "result_indet": "Évaluation indéterminée"
+        "parameter_info_title": "Informations sur les paramètres",
+        "parameter_info_desc": "Cliquez sur le nom d'un paramètre pour voir les informations détaillées ci-dessous."
     }
 }
-
 # Initialize session state for wizard steps and language
 if 'current_step' not in st.session_state:
     st.session_state.current_step = 1
 if 'language' not in st.session_state:
     st.session_state.language = "English"
-
+if 'selected_parameter' not in st.session_state:
+    st.session_state.selected_parameter = None
 # Get current language strings
 def t(key):
     return LANGUAGES[st.session_state.language].get(key, key)
-
 # -----------------------
 # Profiles / thresholds with age and athlete adjustments
 # -----------------------
@@ -341,124 +302,143 @@ def get_profile(age, athlete=False):
     }
     # Age adjustments
     if age < 40:
+        # Younger patients have higher e' values
         base_profile["e_septal_low"] = 7.0
         base_profile["e_lateral_low"] = 10.0
         base_profile["e_mean_low"] = 8.5
-        base_profile["LAVi_abn"] = 40.0
+        base_profile["LAVi_abn"] = 40.0  # Higher LAVi threshold for younger patients
     elif age > 70:
+        # Elderly patients have lower e' values
         base_profile["e_septal_low"] = 5.0
         base_profile["e_lateral_low"] = 6.0
         base_profile["e_mean_low"] = 5.5
-        base_profile["LAVi_abn"] = 38.0
+        base_profile["LAVi_abn"] = 38.0  # Slightly higher LAVi threshold for elderly
     # Athlete adjustments
     if athlete:
-        base_profile["E_A_restrictive"] = 2.2
-        base_profile["E_e_mean_abn"] = 16.0
-        base_profile["E_e_septal_abn"] = 17.0
-        base_profile["E_e_lateral_abn"] = 15.0
+        base_profile["E_A_restrictive"] = 2.2  # Higher threshold for athletes
+        base_profile["E_e_mean_abn"] = 16.0  # Higher threshold for athletes
+        base_profile["E_e_septal_abn"] = 17.0  # Higher threshold for athletes
+        base_profile["E_e_lateral_abn"] = 15.0  # Higher threshold for athletes
     return base_profile
-
 # -----------------------
 # Medical Knowledge Base with enhanced content
 # -----------------------
 PARAMETER_EXPLANATIONS = {
     "E": {
+        "name": "Mitral Inflow E Velocity",
         "why": "Mitral inflow E velocity reflects early diastolic filling, influenced by LA pressure and LV relaxation.",
         "how": "PW Doppler at mitral leaflet tips in apical 4-chamber view. Measure peak velocity in early diastole.",
         "pitfalls": "Affected by preload, LV relaxation, and mitral regurgitation. Use with caution in tachycardia."
     },
     "A": {
+        "name": "Mitral Inflow A Velocity",
         "why": "Mitral inflow A velocity reflects late diastolic filling due to atrial contraction.",
         "how": "PW Doppler at mitral leaflet tips in apical 4-chamber view. Measure peak velocity during atrial systole.",
         "pitfalls": "Not reliable in atrial fibrillation or with significant mitral annular calcification."
     },
     "e_septal": {
+        "name": "Septal Mitral Annular Tissue Doppler e' Velocity",
         "why": "Septal mitral annular tissue Doppler e' velocity is a marker of LV relaxation.",
         "how": "TDI at septal mitral annulus in apical 4-chamber view. Measure early diastolic velocity.",
         "pitfalls": "Can be reduced by regional wall motion abnormalities or prior septal infarction."
     },
     "e_lateral": {
+        "name": "Lateral Mitral Annular Tissue Doppler e' Velocity",
         "why": "Lateral mitral annular tissue Doppler e' velocity is a marker of LV relaxation.",
         "how": "TDI at lateral mitral annulus in apical 4-chamber view. Measure early diastolic velocity.",
         "pitfalls": "Can be reduced by lateral wall motion abnormalities or prior lateral infarction."
     },
     "E_over_e_mean": {
+        "name": "E/e' Mean Ratio",
         "why": "The ratio E/e' approximates LV filling pressures (e.g., PCWP).",
         "how": "Calculate as E divided by the average of septal and lateral e'.",
         "pitfalls": "Less reliable in mitral valve disease, HCM, or constrictive pericarditis."
     },
     "E_over_e_septal": {
+        "name": "E/e' Septal Ratio",
         "why": "The ratio E/e' septal approximates LV filling pressures, especially in certain populations.",
         "how": "Calculate as E divided by septal e'.",
         "pitfalls": "Tends to overestimate filling pressures compared to E/e' mean."
     },
     "E_over_e_lateral": {
+        "name": "E/e' Lateral Ratio",
         "why": "The ratio E/e' lateral approximates LV filling pressures, but may be less specific.",
         "how": "Calculate as E divided by lateral e'.",
         "pitfalls": "More preload-dependent than septal e'."
     },
     "TR_vmax": {
+        "name": "Tricuspid Regurgitation Peak Velocity",
         "why": "TR jet peak velocity estimates systolic pulmonary artery pressure, which can be elevated in heart failure.",
         "how": "CW Doppler across tricuspid valve. Use multiple views to align with jet and measure peak velocity.",
         "pitfalls": "Requires adequate TR signal. May underestimate if jet is not well aligned."
     },
     "LAVi": {
+        "name": "Left Atrial Volume Index",
         "why": "Left atrial volume index reflects chronic elevation of LV filling pressures.",
         "how": "Measure LA volume in apical 4-chamber and 2-chamber views at end-systole. Use area-length method and index to BSA.",
         "pitfalls": "Affected by atrial fibrillation, mitral valve disease, and athletic training."
     },
     "LARS": {
+        "name": "LA Reservoir Strain",
         "why": "LA reservoir strain is a sensitive marker of LA dysfunction and elevated filling pressures.",
         "how": "Use speckle-tracking echocardiography on apical 4-chamber and 2-chamber views to measure peak systolic strain.",
         "pitfalls": "Requires good image quality and proper tracking. Vendor-dependent values."
     },
     "PV_S": {
+        "name": "Pulmonary Vein Systolic Flow Velocity",
         "why": "Pulmonary vein systolic flow velocity can be reduced when LA pressure is elevated.",
         "how": "PW Doppler in right upper pulmonary vein. Measure peak systolic velocity.",
         "pitfalls": "Technically challenging. Affected by age, rhythm, and mitral regurgitation."
     },
     "PV_D": {
+        "name": "Pulmonary Vein Diastolic Flow Velocity",
         "why": "Pulmonary vein diastolic flow velocity increases when LA pressure is elevated.",
         "how": "PW Doppler in right upper pulmonary vein. Measure peak diastolic velocity.",
         "pitfalls": "Technically challenging. Affected by age, rhythm, and mitral regurgitation."
     },
     "Ar_minus_A": {
+        "name": "PV Ar - MV A Duration Difference",
         "why": "The difference between pulmonary vein Ar duration and mitral A duration reflects LV end-diastolic pressure.",
         "how": "Measure duration of pulmonary vein Ar wave (atrial reversal) and mitral A wave. Subtract mitral A duration from Ar duration.",
         "pitfalls": "Technically challenging. Requires simultaneous recording of PV and mitral flows."
     },
     "IVRT": {
+        "name": "Isovolumic Relaxation Time",
         "why": "Isovolumic relaxation time shortens with elevated filling pressures and prolongs with impaired relaxation.",
         "how": "CW or PW Doppler between LV outflow and inflow. Measure from aortic valve closure to mitral valve opening.",
         "pitfalls": "Heart rate dependent. Difficult to measure in tachycardia."
     },
     "DT": {
+        "name": "Deceleration Time",
         "why": "Deceleration time of E velocity shortens with restrictive physiology and elevated pressures.",
         "how": "PW Doppler of mitral inflow. Measure time from E peak to where velocity declines to zero (or extrapolate if incomplete).",
         "pitfalls": "Affected by heart rate, age, and loading conditions."
     },
     "EDV": {
+        "name": "Pulmonary Vein End-Diastolic Velocity",
         "why": "Pulmonary vein end-diastolic velocity may increase with elevated LA pressure in atrial fibrillation.",
         "how": "PW Doppler in pulmonary vein. Measure velocity at end diastole.",
         "pitfalls": "Technically challenging in AF due to variable cycle lengths."
     },
     "Vp": {
+        "name": "Flow Propagation Velocity",
         "why": "Color M-mode flow propagation velocity (Vp) can be used to estimate LV relaxation.",
         "how": "Color M-mode in apical view aligned with inflow. Measure slope of first aliasing from mitral valve to LV apex.",
         "pitfalls": "Technique and measurement not standardized. Angle dependent."
     },
     "E_over_Vp": {
+        "name": "E/Vp Ratio",
         "why": "The ratio E/Vp correlates with PCWP.",
         "how": "Calculate as E divided by Vp.",
         "pitfalls": "Limited validation in various clinical scenarios."
     },
     "TE_minus_e": {
+        "name": "TE - e' Time Difference",
         "why": "The time difference between onset of E and e' may reflect LV diastolic dysfunction.",
         "how": "Measure time from onset of mitral E to onset of e' on TDI.",
         "pitfalls": "Technically challenging. Requires high frame rate imaging."
     }
 }
-
 # -----------------------
 # Example Cases
 # -----------------------
@@ -508,20 +488,17 @@ EXAMPLE_CASES = {
         "LAVi": 36.0
     }
 }
-
 # -----------------------
 # Utilities
 # -----------------------
-def nz(x):
-    return x is not None and not (isinstance(x, float) and x != x)
-
+def nz(x): 
+    return x is not None and (not (isinstance(x, float) and (x != x)))
 def safe_mean(*vals):
     vs = [v for v in vals if nz(v)]
     return sum(vs)/len(vs) if vs else None
-
 def compute_derived(meas):
     if nz(meas.get("E")) and nz(meas.get("A")) and meas.get("A") != 0:
-        meas["EA"] = round(meas["E"]/meas["A"], 2)
+        meas["EA"] = meas["E"]/meas["A"]
     else:
         meas["EA"] = meas.get("EA")
     if not nz(meas.get("e_mean")):
@@ -530,7 +507,6 @@ def compute_derived(meas):
         meas["pulm_SD"] = meas["PV_S"]/meas["PV_D"]
     if not nz(meas.get("E_over_Vp")) and nz(meas.get("E")) and nz(meas.get("Vp")) and meas.get("Vp") != 0:
         meas["E_over_Vp"] = meas["E"]/meas["Vp"]
-
 def qc_notes(meas, ctx):
     notes = []
     if ctx["rhythm"] == "AF" and (not nz(meas.get("cycles_averaged")) or meas.get("cycles_averaged") < 5):
@@ -551,73 +527,44 @@ def qc_notes(meas, ctx):
     if nz(meas.get("LAVi")) and meas.get("LAVi") > 50:
         notes.append("Severe LA enlargement present.")
     return notes
-
-def create_tooltip(parameter_name):
-    explanation = PARAMETER_EXPLANATIONS.get(parameter_name, {})
-    why = explanation.get("why", "No explanation available.")
-    how = explanation.get("how", "No measurement instructions available.")
-    pitfalls = explanation.get("pitfalls", "")
-    
-    tooltip_content = f"<b>Why it matters:</b> {why}<br><br><b>How to measure:</b> {how}"
-    if pitfalls:
-        tooltip_content += f"<br><br><b>Pitfalls:</b> {pitfalls}"
-    
-    tooltip_html = f"""
-    <div class="custom-tooltip">
-        ℹ️
-        <span class="tooltiptext">{tooltip_content}</span>
-    </div>
-    """
-    return tooltip_html
-
 # Atomic rule checks
 def rule_low_e_prime(meas, P):
     return (nz(meas.get("e_mean")) and meas["e_mean"] <= P["e_mean_low"]) or \
            (nz(meas.get("e_septal")) and meas["e_septal"] <= P["e_septal_low"]) or \
            (nz(meas.get("e_lateral")) and meas["e_lateral"] <= P["e_lateral_low"])
-
 def rule_Ee_high(meas, P):
     return (nz(meas.get("E_over_e_mean")) and meas["E_over_e_mean"] >= P["E_e_mean_abn"]) or \
            (nz(meas.get("E_over_e_septal")) and meas["E_over_e_septal"] >= P["E_e_septal_abn"]) or \
            (nz(meas.get("E_over_e_lateral")) and meas["E_over_e_lateral"] >= P["E_e_lateral_abn"])
-
-def rule_TR_high(meas, P):
+def rule_TR_high(meas, P): 
     return nz(meas.get("TR_vmax")) and meas["TR_vmax"] >= P["TR_vmax_abn"]
-
-def rule_LAVi_high(meas, P):
+def rule_LAVi_high(meas, P): 
     return nz(meas.get("LAVi")) and meas["LAVi"] >= P["LAVi_abn"]
-
-def rule_LARS_low(meas, P):
+def rule_LARS_low(meas, P): 
     return nz(meas.get("LARS")) and meas["LARS"] <= P["LARS_low"]
-
-def rule_pv_SD_low(meas, P):
+def rule_pv_SD_low(meas, P): 
     return nz(meas.get("pulm_SD")) and meas["pulm_SD"] <= P["pulm_SD_low"]
-
-def rule_IVRT_short(meas, P):
+def rule_IVRT_short(meas, P): 
     return nz(meas.get("IVRT")) and meas["IVRT"] <= P["IVRT_short_sinus"]
-
-def rule_restrictive_inflow(meas, P):
+def rule_restrictive_inflow(meas, P): 
     return nz(meas.get("EA")) and meas["EA"] >= P["E_A_restrictive"]
-
-def rule_low_EA(meas, P):
+def rule_low_EA(meas, P): 
     return nz(meas.get("EA")) and meas["EA"] <= P["E_A_low_cut"]
-
 def collect_surrogates(meas, P):
     tags = []
-    if rule_Ee_high(meas, P):
+    if rule_Ee_high(meas, P): 
         tags.append("E/e' high")
-    if rule_TR_high(meas, P):
+    if rule_TR_high(meas, P): 
         tags.append("TR Vmax high")
-    if rule_LAVi_high(meas, P):
+    if rule_LAVi_high(meas, P): 
         tags.append("Enlarged LAVi")
-    if rule_LARS_low(meas, P):
+    if rule_LARS_low(meas, P): 
         tags.append("Low LA strain (LARS)")
-    if rule_pv_SD_low(meas, P):
+    if rule_pv_SD_low(meas, P): 
         tags.append("Pulm vein S/D low")
-    if rule_IVRT_short(meas, P):
+    if rule_IVRT_short(meas, P): 
         tags.append("Short IVRT")
     return tags
-
 # Decision engine with comprehensive medical reasoning
 def evaluate_PRVG(meas, ctx, age, athlete):
     P = get_profile(age, athlete)
@@ -628,10 +575,12 @@ def evaluate_PRVG(meas, ctx, age, athlete):
     reasoning = []
     # Check minimal requirements based on rhythm
     if ctx["rhythm"] == "AF":
+        # AF-specific requirements
         if not any([nz(meas.get("IVRT")), nz(meas.get("TR_vmax")), nz(meas.get("E_over_e_septal")), nz(meas.get("EDV"))]):
             missing = ["IVRT or TR Vmax or E/e' (septal) or PV EDV"]
             reasoning.append("In AF, at least one of IVRT, TR Vmax, E/e' septal, or PV EDV is needed for assessment.")
     else:
+        # Sinus rhythm requirements
         if not any([nz(meas.get("EA")), nz(meas.get("E_over_e_mean")), nz(meas.get("TR_vmax")), nz(meas.get("LAVi"))]):
             missing = ["E/A or E/e' or TR Vmax or LAVi"]
             reasoning.append("In sinus rhythm, at least one of E/A, E/e', TR Vmax, or LAVi is needed for assessment.")
@@ -650,6 +599,7 @@ def evaluate_PRVG(meas, ctx, age, athlete):
             "algorithm_flow": ["Missing critical parameters for assessment."]
         }
     # Main decision logic
+    # AF branch
     if ctx["rhythm"] == "AF":
         flags = []
         reasoning_af = []
@@ -662,7 +612,7 @@ def evaluate_PRVG(meas, ctx, age, athlete):
             flags.append("E/e' septal high")
             reasoning_af.append(f"E/e' septal ratio of {meas['E_over_e_septal']} ≥ {P['E_e_septal_abn']} suggests elevated filling pressures.")
             algorithm_flow.append(f"E/e' septal {meas['E_over_e_septal']} ≥ {P['E_e_septal_abn']} → abnormal")
-        if rule_TR_high(meas, P):
+        if rule_TR_high(meas, P): 
             flags.append("TR Vmax high")
             reasoning_af.append(f"TR Vmax of {meas['TR_vmax']} m/s ≥ {P['TR_vmax_abn']} m/s suggests pulmonary hypertension.")
             algorithm_flow.append(f"TR Vmax {meas['TR_vmax']} m/s ≥ {P['TR_vmax_abn']} m/s → abnormal")
@@ -670,6 +620,7 @@ def evaluate_PRVG(meas, ctx, age, athlete):
             flags.append("E/Vp high")
             reasoning_af.append(f"E/Vp ratio of {meas['E_over_Vp']} ≥ {P['E_over_Vp_AF_abn']} suggests elevated filling pressures in AF.")
             algorithm_flow.append(f"E/Vp {meas['E_over_Vp']} ≥ {P['E_over_Vp_AF_abn']} → abnormal")
+        # Decision making for AF
         reasoning.extend(reasoning_af)
         if len(flags) >= 2:
             status = "High"
@@ -741,6 +692,7 @@ def evaluate_PRVG(meas, ctx, age, athlete):
     if rule_restrictive_inflow(meas, P):
         reasoning_sr.append(f"E/A ratio of {EA} ≥ {P['E_A_restrictive']} indicates restrictive filling pattern (Grade III diastolic dysfunction).")
         algorithm_flow.append(f"E/A {EA} ≥ {P['E_A_restrictive']} → restrictive pattern")
+        # Apply athlete/young exception
         if athlete and age < 40:
             reasoning_sr.append("Athlete/young exception applied: restrictive pattern may be normal in highly trained individuals.")
             narrative = "Restrictive pattern detected but may be normal in athletes. Correlate with clinical context."
@@ -832,41 +784,45 @@ def evaluate_PRVG(meas, ctx, age, athlete):
         "reco": ["Obtain additional indices: LARS, PV flow, TR, or consider invasive hemodynamics."],
         "algorithm_flow": algorithm_flow
     }
-
 # -----------------------
 # UI Implementation
 # -----------------------
 # Language selector in sidebar
 with st.sidebar:
     st.session_state.language = st.selectbox("Language", list(LANGUAGES.keys()), index=0)
+    # Voice input placeholder
     st.write(f"🔊 {t('voice_input')} (Coming soon)")
+    # Example cases
     st.markdown("---")
     st.subheader(t("try_example"))
     example_case = st.selectbox("Select example case", list(EXAMPLE_CASES.keys()))
     if st.button("Load Example"):
         case_data = EXAMPLE_CASES[example_case]
+        # Set session state values for all inputs
         for key, value in case_data.items():
             if key in ["age", "presentation", "rhythm"]:
                 st.session_state[key] = value
             else:
                 st.session_state[f"{key}_input"] = value
+        # Set contextual flags based on presentation
         if case_data["presentation"] == "Athlete / Young":
             st.session_state.athlete = True
         else:
             st.session_state.athlete = False
+        # Set rhythm
         if case_data["rhythm"] == "AF":
             st.session_state.rhythm_af = True
         else:
             st.session_state.rhythm_af = False
         st.success(f"Loaded {example_case} example")
         st.rerun()
+    # References
     st.markdown("---")
     st.subheader(t("references"))
     st.markdown("""
     - Nagueh SF et al. Recommendations for the Evaluation of Left Ventricular Diastolic Function by Echocardiography. JASE 2016.
     - Lancellotti P et al. EACVI recommendations for the assessment of left ventricular filling pressure. Eur Heart J Cardiovasc Imaging 2024.
     """)
-
 # Wizard navigation
 st.markdown(f"""
 <div class='card'>
@@ -874,7 +830,7 @@ st.markdown(f"""
     <div class='small-muted'>{t('disclaimer')}</div>
 </div>
 """, unsafe_allow_html=True)
-
+# Wizard steps
 col1, col2, col3 = st.columns(3)
 with col1:
     step1_class = "wizard-step active" if st.session_state.current_step == 1 else "wizard-step completed" if st.session_state.current_step > 1 else "wizard-step"
@@ -885,22 +841,23 @@ with col2:
 with col3:
     step3_class = "wizard-step active" if st.session_state.current_step == 3 else "wizard-step"
     st.markdown(f'<div class="{step3_class}"><h4>{t("step3_title")}</h4></div>', unsafe_allow_html=True)
-
 # Initialize session state variables if they don't exist
-session_defaults = {
-    'age': 65,
-    'presentation': "General / Routine",
-    'rhythm': "Sinus",
-    'minimal_mode': True,
-    'auto_eval': True,
-    'tachycardia': False,
-    'bradycardia': False,
-    'poor_window': False,
-}
-for key, default_value in session_defaults.items():
-    if key not in st.session_state:
-        st.session_state[key] = default_value
-
+if 'age' not in st.session_state:
+    st.session_state.age = 65
+if 'presentation' not in st.session_state:
+    st.session_state.presentation = "General / Routine"
+if 'rhythm' not in st.session_state:
+    st.session_state.rhythm = "Sinus"
+if 'minimal_mode' not in st.session_state:
+    st.session_state.minimal_mode = True
+if 'auto_eval' not in st.session_state:
+    st.session_state.auto_eval = True
+if 'tachycardia' not in st.session_state:
+    st.session_state.tachycardia = False
+if 'bradycardia' not in st.session_state:
+    st.session_state.bradycardia = False
+if 'poor_window' not in st.session_state:
+    st.session_state.poor_window = False
 # Step 1: Patient Information
 if st.session_state.current_step == 1:
     st.markdown(f"### {t('step1_title')}")
@@ -909,38 +866,40 @@ if st.session_state.current_step == 1:
         with p1:
             presentation = st.selectbox(
                 t("clinical_presentation"),
-                ["General / Routine", "Athlete / Young", "Hypertension / LVH", "Heart Failure (chronic)",
+                ["General / Routine", "Athlete / Young", "Hypertension / LVH", "Heart Failure (chronic)", 
                  "Atrial Fibrillation", "Pulmonary Hypertension", "Post-op / Acute", "Valve disease (MR/MS/AS)"],
                 key="presentation_select",
-                index=["General / Routine", "Athlete / Young", "Hypertension / LVH", "Heart Failure (chronic)",
-                       "Atrial Fibrillation", "Pulmonary Hypertension", "Post-op / Acute",
-                       "Valve disease (MR/MS/AS)"].index(st.session_state.presentation)
+                index=["General / Routine", "Athlete / Young", "Hypertension / LVH", "Heart Failure (chronic)", 
+                 "Atrial Fibrillation", "Pulmonary Hypertension", "Post-op / Acute", "Valve disease (MR/MS/AS)"].index(st.session_state.presentation)
             )
             age = st.number_input(t("age"), min_value=12, max_value=110, value=st.session_state.age, step=1, key="age_input")
             athlete = True if presentation == "Athlete / Young" else False
         with p2:
-            rhythm = st.radio(t("rhythm"), ["Sinus", "AF"],
-                              index=0 if st.session_state.rhythm == "Sinus" else 1,
-                              key="rhythm_radio")
-            minimal_mode = st.checkbox(t("minimal_mode"), value=st.session_state.minimal_mode,
-                                       help="Show only the most relevant parameters for the selected presentation",
-                                       key="minimal_mode_check")
+            rhythm = st.radio(t("rhythm"), ["Sinus", "AF"], 
+                             index=0 if st.session_state.rhythm == "Sinus" else 1, 
+                             key="rhythm_radio")
+            minimal_mode = st.checkbox(t("minimal_mode"), value=st.session_state.minimal_mode, 
+                                      help="Show only the most relevant parameters for the selected presentation",
+                                      key="minimal_mode_check")
             auto_eval = st.checkbox(t("auto_eval"), value=st.session_state.auto_eval, key="auto_eval_check")
         with p3:
-            st.write("")
+            st.write("")  # spacing
             st.caption(t("profile"))
-            tachycardia = st.checkbox(t("tachycardia"), value=st.session_state.tachycardia,
-                                      help="HR > 100 bpm - may shorten diastolic intervals",
-                                      key="tachycardia_check")
-            bradycardia = st.checkbox(t("bradycardia"), value=st.session_state.bradycardia,
-                                      help="HR < 60 bpm - may alter E/A relation",
-                                      key="bradycardia_check")
-            poor_window = st.checkbox(t("poor_window"), value=st.session_state.poor_window,
-                                      help="Consider LARS or contrast enhancement",
-                                      key="poor_window_check")
+            # Add contextual flags
+            tachycardia = st.checkbox(t("tachycardia"), value=st.session_state.tachycardia, 
+                                     help="HR > 100 bpm - may shorten diastolic intervals",
+                                     key="tachycardia_check")
+            bradycardia = st.checkbox(t("bradycardia"), value=st.session_state.bradycardia, 
+                                     help="HR < 60 bpm - may alter E/A relation",
+                                     key="bradycardia_check")
+            poor_window = st.checkbox(t("poor_window"), value=st.session_state.poor_window, 
+                                     help="Consider LARS or contrast enhancement",
+                                     key="poor_window_check")
+    # Navigation buttons
     col_nav1, col_nav2 = st.columns([1, 5])
     with col_nav1:
         if st.button(t("next_step")):
+            # Save step 1 values to session state
             st.session_state.age = age
             st.session_state.presentation = presentation
             st.session_state.rhythm = rhythm
@@ -951,7 +910,6 @@ if st.session_state.current_step == 1:
             st.session_state.poor_window = poor_window
             st.session_state.current_step = 2
             st.rerun()
-
 # Step 2: Key Parameters
 elif st.session_state.current_step == 2:
     st.markdown(f"### {t('step2_title')}")
@@ -965,7 +923,7 @@ elif st.session_state.current_step == 2:
     poor_window = st.session_state.poor_window
     age = st.session_state.age
     athlete = True if presentation == "Athlete / Young" else False
-
+    # Determine minimal fields based on presentation
     def minimal_fields(pres, rhythm):
         if pres == "Athlete / Young":
             return ["E", "A", "one_e_prime", "LAVi"]
@@ -977,187 +935,208 @@ elif st.session_state.current_step == 2:
             return ["TR_vmax", "E_over_e_mean", "LAVi"]
         if pres == "Post-op / Acute":
             return ["E_over_e_mean", "TR_vmax", "LAVi"]
+        # Default
         return ["E", "A", "one_e_prime", "TR_vmax", "LAVi"]
-
     core = minimal_fields(presentation, rhythm)
+    # Show required fields
     st.markdown(f"**{t('required_fields')}** {', '.join(core)}")
+    # Inputs area
     st.markdown(f"### {t('measurements')}")
     st.caption(t("minimal_mode_desc"))
-
+    # Create input sections
     cols = st.columns(3)
-
     def show_if(name):
         return (not minimal_mode) or (name in core)
-
+    # Helper function to create parameter buttons
+    def param_button(param_key, label):
+        if st.button(label, key=f"btn_{param_key}"):
+            st.session_state.selected_parameter = param_key
+        return st.session_state.selected_parameter == param_key
+    
     with cols[0]:
         st.markdown(f"#### {t('mitral_inflow')}")
-        session_input_keys_0 = ['E_input', 'A_input', 'EA_input']
-        for key in session_input_keys_0:
-            if key not in st.session_state:
-                st.session_state[key] = None
-
-        E = st.number_input(f"E (cm/s)", min_value=0.0, step=0.1, format="%.1f",
-                            disabled=not show_if("E"), key="E_input", value=st.session_state.E_input)
-        st.markdown(create_tooltip('E'), unsafe_allow_html=True)
-
-        A = st.number_input(f"A (cm/s)", min_value=0.0, step=0.1, format="%.1f",
-                            disabled=not show_if("A"), key="A_input", value=st.session_state.A_input)
-        st.markdown(create_tooltip('A'), unsafe_allow_html=True)
-
-        EA = st.number_input("E/A ratio (if pre-calculated)", min_value=0.0, step=0.01, format="%.2f",
-                             disabled=not show_if("EA"), key="EA_input", value=st.session_state.EA_input)
-
+        # Initialize session state for inputs if not exists
+        if 'E_input' not in st.session_state:
+            st.session_state.E_input = 0.0 if show_if("E") else None
+        if 'A_input' not in st.session_state:
+            st.session_state.A_input = 0.0 if show_if("A") else None
+        if 'EA_input' not in st.session_state:
+            st.session_state.EA_input = 0.0 if show_if("EA") else None
+            
+        # Use 0.0 as default value if field should be shown, otherwise None
+        E_default = float(st.session_state.E_input) if st.session_state.E_input is not None else 0.0
+        A_default = float(st.session_state.A_input) if st.session_state.A_input is not None else 0.0
+        EA_default = float(st.session_state.EA_input) if st.session_state.EA_input is not None else 0.0
+        
+        E = st.number_input("E (cm/s)", min_value=0.0, step=0.1, format="%.1f", 
+                           disabled=not show_if("E"), key="E_input", value=E_default if show_if("E") else 0.0)
+        A = st.number_input("A (cm/s)", min_value=0.0, step=0.1, format="%.1f", 
+                           disabled=not show_if("A"), key="A_input", value=A_default if show_if("A") else 0.0)
+        EA = st.number_input("E/A ratio (if pre-calculated)", min_value=0.0, step=0.1, format="%.2f", 
+                            disabled=not show_if("EA"), key="EA_input", value=EA_default if show_if("EA") else 0.0)
     with cols[1]:
         st.markdown(f"#### {t('tissue_doppler')}")
-        session_input_keys_1 = ['e_septal_input', 'e_lateral_input', 'E_over_e_septal_input',
-                                'E_over_e_lateral_input', 'E_over_e_mean_input']
-        for key in session_input_keys_1:
-            if key not in st.session_state:
-                st.session_state[key] = None
-
-        e_sept = st.number_input(f"e' septal (cm/s)", min_value=0.0, step=0.1, format="%.1f",
-                                 disabled=not (show_if("e_septal") or show_if("one_e_prime")), key="e_septal_input",
-                                 value=st.session_state.e_septal_input)
-        st.markdown(create_tooltip('e_septal'), unsafe_allow_html=True)
-
-        e_lat = st.number_input(f"e' lateral (cm/s)", min_value=0.0, step=0.1, format="%.1f",
-                                disabled=not (show_if("e_lateral") or show_if("one_e_prime")), key="e_lateral_input",
-                                value=st.session_state.e_lateral_input)
-        st.markdown(create_tooltip('e_lateral'), unsafe_allow_html=True)
-
-        E_over_e_sept = st.number_input(f"E/e' septal", min_value=0.0, step=0.1, format="%.1f",
-                                        disabled=not show_if("E_over_e_septal"), key="E_over_e_septal_input",
-                                        value=st.session_state.E_over_e_septal_input)
-        st.markdown(create_tooltip('E_over_e_septal'), unsafe_allow_html=True)
-
-        E_over_e_lat = st.number_input(f"E/e' lateral", min_value=0.0, step=0.1, format="%.1f",
-                                       disabled=not show_if("E_over_e_lateral"), key="E_over_e_lateral_input",
-                                       value=st.session_state.E_over_e_lateral_input)
-        st.markdown(create_tooltip('E_over_e_lateral'), unsafe_allow_html=True)
-
-        E_over_e_mean = st.number_input(f"E/e' mean", min_value=0.0, step=0.1, format="%.1f",
-                                        disabled=not show_if("E_over_e_mean"), key="E_over_e_mean_input",
-                                        value=st.session_state.E_over_e_mean_input)
-        st.markdown(create_tooltip('E_over_e_mean'), unsafe_allow_html=True)
-
+        # Initialize session state for inputs if not exists
+        if 'e_septal_input' not in st.session_state:
+            st.session_state.e_septal_input = 0.0 if (show_if("e_septal") or show_if("one_e_prime")) else None
+        if 'e_lateral_input' not in st.session_state:
+            st.session_state.e_lateral_input = 0.0 if (show_if("e_lateral") or show_if("one_e_prime")) else None
+        if 'E_over_e_septal_input' not in st.session_state:
+            st.session_state.E_over_e_septal_input = 0.0 if show_if("E_over_e_septal") else None
+        if 'E_over_e_lateral_input' not in st.session_state:
+            st.session_state.E_over_e_lateral_input = 0.0 if show_if("E_over_e_lateral") else None
+        if 'E_over_e_mean_input' not in st.session_state:
+            st.session_state.E_over_e_mean_input = 0.0 if show_if("E_over_e_mean") else None
+            
+        # Use 0.0 as default value if field should be shown, otherwise None
+        e_septal_default = float(st.session_state.e_septal_input) if st.session_state.e_septal_input is not None else 0.0
+        e_lateral_default = float(st.session_state.e_lateral_input) if st.session_state.e_lateral_input is not None else 0.0
+        E_over_e_septal_default = float(st.session_state.E_over_e_septal_input) if st.session_state.E_over_e_septal_input is not None else 0.0
+        E_over_e_lateral_default = float(st.session_state.E_over_e_lateral_input) if st.session_state.E_over_e_lateral_input is not None else 0.0
+        E_over_e_mean_default = float(st.session_state.E_over_e_mean_input) if st.session_state.E_over_e_mean_input is not None else 0.0
+        
+        e_sept = st.number_input("e' septal (cm/s)", min_value=0.0, step=0.1, format="%.1f", 
+                                disabled=not (show_if("e_septal") or show_if("one_e_prime")), key="e_septal_input", 
+                                value=e_septal_default if (show_if("e_septal") or show_if("one_e_prime")) else 0.0)
+        e_lat = st.number_input("e' lateral (cm/s)", min_value=0.0, step=0.1, format="%.1f", 
+                               disabled=not (show_if("e_lateral") or show_if("one_e_prime")), key="e_lateral_input", 
+                               value=e_lateral_default if (show_if("e_lateral") or show_if("one_e_prime")) else 0.0)
+        E_over_e_sept = st.number_input("E/e' septal", min_value=0.0, step=0.1, format="%.1f", 
+                                       disabled=not show_if("E_over_e_septal"), key="E_over_e_septal_input", 
+                                       value=E_over_e_septal_default if show_if("E_over_e_septal") else 0.0)
+        E_over_e_lat = st.number_input("E/e' lateral", min_value=0.0, step=0.1, format="%.1f", 
+                                      disabled=not show_if("E_over_e_lateral"), key="E_over_e_lateral_input", 
+                                      value=E_over_e_lateral_default if show_if("E_over_e_lateral") else 0.0)
+        E_over_e_mean = st.number_input("E/e' mean", min_value=0.0, step=0.1, format="%.1f", 
+                                       disabled=not show_if("E_over_e_mean"), key="E_over_e_mean_input", 
+                                       value=E_over_e_mean_default if show_if("E_over_e_mean") else 0.0)
     with cols[2]:
         st.markdown(f"#### {t('other_params')}")
-        session_input_keys_2 = ['TR_vmax_input', 'LAVi_input', 'LARS_input']
-        for key in session_input_keys_2:
-            if key not in st.session_state:
-                st.session_state[key] = None
-
-        TR_vmax = st.number_input(f"TR Vmax (m/s)", min_value=0.0, step=0.01, format="%.2f",
-                                  disabled=not show_if("TR_vmax"), key="TR_vmax_input",
-                                  value=st.session_state.TR_vmax_input)
-        st.markdown(create_tooltip('TR_vmax'), unsafe_allow_html=True)
-
-        LAVi = st.number_input(f"LAVi (mL/m²)", min_value=0.0, step=0.1, format="%.1f",
-                               disabled=not show_if("LAVi"), key="LAVi_input", value=st.session_state.LAVi_input)
-        st.markdown(create_tooltip('LAVi'), unsafe_allow_html=True)
-
-        LARS = st.number_input(f"LA reservoir strain (LARS %)", min_value=0.0, step=0.1, format="%.1f",
-                               disabled=not show_if("LARS"), key="LARS_input", value=st.session_state.LARS_input)
-        st.markdown(create_tooltip('LARS'), unsafe_allow_html=True)
-
+        # Initialize session state for inputs if not exists
+        if 'TR_vmax_input' not in st.session_state:
+            st.session_state.TR_vmax_input = 0.0 if show_if("TR_vmax") else None
+        if 'LAVi_input' not in st.session_state:
+            st.session_state.LAVi_input = 0.0 if show_if("LAVi") else None
+        if 'LARS_input' not in st.session_state:
+            st.session_state.LARS_input = 0.0 if show_if("LARS") else None
+            
+        # Use 0.0 as default value if field should be shown, otherwise None
+        TR_vmax_default = float(st.session_state.TR_vmax_input) if st.session_state.TR_vmax_input is not None else 0.0
+        LAVi_default = float(st.session_state.LAVi_input) if st.session_state.LAVi_input is not None else 0.0
+        LARS_default = float(st.session_state.LARS_input) if st.session_state.LARS_input is not None else 0.0
+        
+        TR_vmax = st.number_input("TR Vmax (m/s)", min_value=0.0, step=0.01, format="%.2f", 
+                                 disabled=not show_if("TR_vmax"), key="TR_vmax_input", 
+                                 value=TR_vmax_default if show_if("TR_vmax") else 0.0)
+        LAVi = st.number_input("LAVi (mL/m²)", min_value=0.0, step=0.1, format="%.1f", 
+                              disabled=not show_if("LAVi"), key="LAVi_input", 
+                              value=LAVi_default if show_if("LAVi") else 0.0)
+        LARS = st.number_input("LA reservoir strain (LARS %)", min_value=0.0, step=0.1, format="%.1f", 
+                              disabled=not show_if("LARS"), key="LARS_input", 
+                              value=LARS_default if show_if("LARS") else 0.0)
+    # Advanced parameters
     with st.expander(t("advanced_params")):
         adv_cols = st.columns(2)
         with adv_cols[0]:
             st.markdown(f"#### {t('pulmonary_vein')}")
-            session_input_keys_3 = ['PV_S_input', 'PV_D_input', 'Ar_minus_A_input']
-            for key in session_input_keys_3:
-                if key not in st.session_state:
-                    st.session_state[key] = None
-
-            PV_S = st.number_input(f"PV S (cm/s)", min_value=0.0, step=0.1, format="%.1f",
-                                   key="PV_S_input", value=st.session_state.PV_S_input)
-            st.markdown(create_tooltip('PV_S'), unsafe_allow_html=True)
-
-            PV_D = st.number_input(f"PV D (cm/s)", min_value=0.0, step=0.1, format="%.1f",
-                                   key="PV_D_input", value=st.session_state.PV_D_input)
-            st.markdown(create_tooltip('PV_D'), unsafe_allow_html=True)
-
-            Ar_minus_A = st.number_input(f"PV Ar - MV A (ms)", min_value=0, step=1, format="%d",
-                                         disabled=not show_if("Ar_minus_A"), key="Ar_minus_A_input",
-                                         value=st.session_state.Ar_minus_A_input)
-            st.markdown(create_tooltip('Ar_minus_A'), unsafe_allow_html=True)
-
+            # Initialize session state for inputs if not exists
+            if 'PV_S_input' not in st.session_state:
+                st.session_state.PV_S_input = 0
+            if 'PV_D_input' not in st.session_state:
+                st.session_state.PV_D_input = 0
+            if 'Ar_minus_A_input' not in st.session_state:
+                st.session_state.Ar_minus_A_input = 0
+                
+            # Use 0 as default value
+            PV_S_default = int(st.session_state.PV_S_input) if st.session_state.PV_S_input is not None else 0
+            PV_D_default = int(st.session_state.PV_D_input) if st.session_state.PV_D_input is not None else 0
+            Ar_minus_A_default = int(st.session_state.Ar_minus_A_input) if st.session_state.Ar_minus_A_input is not None else 0
+            
+            PV_S = st.number_input("PV S (cm/s)", min_value=0.0, step=0.1, format="%.1f", 
+                                  key="PV_S_input", value=float(PV_S_default))
+            PV_D = st.number_input("PV D (cm/s)", min_value=0.0, step=0.1, format="%.1f", 
+                                  key="PV_D_input", value=float(PV_D_default))
+            Ar_minus_A = st.number_input("PV Ar - MV A (ms)", min_value=0, step=1, format="%d",
+                                        disabled=not show_if("Ar_minus_A"), key="Ar_minus_A_input", 
+                                        value=Ar_minus_A_default if show_if("Ar_minus_A") else 0)
         with adv_cols[1]:
             st.markdown(f"#### {t('other_advanced')}")
-            session_input_keys_4 = ['IVRT_input', 'DT_input', 'EDV_input', 'Vp_input',
-                                    'E_over_Vp_input', 'TE_minus_e_input']
-            for key in session_input_keys_4:
-                if key not in st.session_state:
-                    st.session_state[key] = None
-
-            IVRT = st.number_input(f"IVRT (ms)", min_value=0, step=1, format="%d",
-                                   key="IVRT_input", value=st.session_state.IVRT_input)
-            st.markdown(create_tooltip('IVRT'), unsafe_allow_html=True)
-
-            DT = st.number_input(f"DT (ms)", min_value=0, step=1, format="%d",
-                                 key="DT_input", value=st.session_state.DT_input)
-            st.markdown(create_tooltip('DT'), unsafe_allow_html=True)
-
-            EDV = st.number_input(f"PV EDV (cm/s)", min_value=0.0, step=0.1, format="%.1f",
-                                  key="EDV_input", value=st.session_state.EDV_input)
-            st.markdown(create_tooltip('EDV'), unsafe_allow_html=True)
-
-            Vp = st.number_input(f"Vp (cm/s)", min_value=0.0, step=0.1, format="%.1f",
-                                 key="Vp_input", value=st.session_state.Vp_input)
-            st.markdown(create_tooltip('Vp'), unsafe_allow_html=True)
-
-            E_over_Vp = st.number_input(f"E/Vp", min_value=0.0, step=0.1, format="%.1f",
-                                        key="E_over_Vp_input", value=st.session_state.E_over_Vp_input)
-            st.markdown(create_tooltip('E_over_Vp'), unsafe_allow_html=True)
-
-            TEe = st.number_input(f"TE - e' (ms)", min_value=0, step=1, format="%d",
-                                  key="TE_minus_e_input", value=st.session_state.TE_minus_e_input)
-            st.markdown(create_tooltip('TE_minus_e'), unsafe_allow_html=True)
-
+            # Initialize session state for inputs if not exists
+            if 'IVRT_input' not in st.session_state:
+                st.session_state.IVRT_input = 0
+            if 'DT_input' not in st.session_state:
+                st.session_state.DT_input = 0
+            if 'EDV_input' not in st.session_state:
+                st.session_state.EDV_input = 0.0
+            if 'Vp_input' not in st.session_state:
+                st.session_state.Vp_input = 0.0
+            if 'E_over_Vp_input' not in st.session_state:
+                st.session_state.E_over_Vp_input = 0.0
+            if 'TE_minus_e_input' not in st.session_state:
+                st.session_state.TE_minus_e_input = 0
+                
+            # Use 0 as default value for integers, 0.0 for floats
+            IVRT_default = int(st.session_state.IVRT_input) if st.session_state.IVRT_input is not None else 0
+            DT_default = int(st.session_state.DT_input) if st.session_state.DT_input is not None else 0
+            EDV_default = float(st.session_state.EDV_input) if st.session_state.EDV_input is not None else 0.0
+            Vp_default = float(st.session_state.Vp_input) if st.session_state.Vp_input is not None else 0.0
+            E_over_Vp_default = float(st.session_state.E_over_Vp_input) if st.session_state.E_over_Vp_input is not None else 0.0
+            TEe_default = int(st.session_state.TE_minus_e_input) if st.session_state.TE_minus_e_input is not None else 0
+            
+            IVRT = st.number_input("IVRT (ms)", min_value=0, step=1, format="%d",
+                                  key="IVRT_input", value=IVRT_default)
+            DT = st.number_input("DT (ms)", min_value=0, step=1, format="%d",
+                                key="DT_input", value=DT_default)
+            EDV = st.number_input("PV EDV (cm/s)", min_value=0.0, step=0.1, format="%.1f", 
+                                 key="EDV_input", value=EDV_default)
+            Vp = st.number_input("Vp (cm/s)", min_value=0.0, step=0.1, format="%.1f", 
+                                key="Vp_input", value=Vp_default)
+            E_over_Vp = st.number_input("E/Vp", min_value=0.0, step=0.1, format="%.1f", 
+                                       key="E_over_Vp_input", value=E_over_Vp_default)
+            TEe = st.number_input("TE - e' (ms)", min_value=0, step=1, format="%d",
+                                 key="TE_minus_e_input", value=TEe_default)
         st.markdown(f"#### {t('contextual_params')}")
         ctx_cols = st.columns(3)
         with ctx_cols[0]:
-            session_input_keys_5 = ['cycles_input']
-            for key in session_input_keys_5:
-                if key not in st.session_state:
-                    st.session_state[key] = None
-            cycles = st.number_input("Averaged cycles (AF)", min_value=0, step=1, format="%d",
-                                     key="cycles_input", value=st.session_state.cycles_input)
+            # Initialize session state for inputs if not exists
+            if 'cycles_input' not in st.session_state:
+                st.session_state.cycles_input = 0
+            cycles_default = int(st.session_state.cycles_input) if st.session_state.cycles_input is not None else 0
+            cycles = st.number_input("Averaged cycles (AF)", min_value=0, step=1, format="%d", 
+                                    key="cycles_input", value=cycles_default)
         with ctx_cols[1]:
-            session_input_keys_6 = ['HR_input']
-            for key in session_input_keys_6:
-                if key not in st.session_state:
-                    st.session_state[key] = None
-            HR = st.number_input("HR (bpm)", min_value=0, step=1, format="%d",
-                                 key="HR_input", value=st.session_state.HR_input)
+            # Initialize session state for inputs if not exists
+            if 'HR_input' not in st.session_state:
+                st.session_state.HR_input = 0
+            HR_default = int(st.session_state.HR_input) if st.session_state.HR_input is not None else 0
+            HR = st.number_input("HR (bpm)", min_value=0, step=1, format="%d", 
+                                key="HR_input", value=HR_default)
         with ctx_cols[2]:
-            session_input_keys_7 = ['LVEF_input']
-            for key in session_input_keys_7:
-                if key not in st.session_state:
-                    st.session_state[key] = None
-            LVEF = st.number_input("LVEF (%)", min_value=0, max_value=100, step=1, format="%d",
-                                   key="LVEF_input", value=st.session_state.LVEF_input)
-
+            # Initialize session state for inputs if not exists
+            if 'LVEF_input' not in st.session_state:
+                st.session_state.LVEF_input = 0
+            LVEF_default = int(st.session_state.LVEF_input) if st.session_state.LVEF_input is not None else 0
+            LVEF = st.number_input("LVEF (%)", min_value=0, max_value=100, step=1, format="%d", 
+                                  key="LVEF_input", value=LVEF_default)
+    # Measurement dictionary
     meas = {
         "E": E or None, "A": A or None, "EA": EA or None,
         "e_septal": e_sept or None, "e_lateral": e_lat or None, "e_mean": None,
-        "E_over_e_mean": E_over_e_mean or None, "E_over_e_septal": E_over_e_sept or None,
-        "E_over_e_lateral": E_over_e_lat or None, "TR_vmax": TR_vmax or None,
-        "LAVi": LAVi or None, "LARS": LARS or None, "PV_S": PV_S or None,
-        "PV_D": PV_D or None, "pulm_SD": None, "Ar_minus_A": Ar_minus_A or None,
-        "TE_minus_e": TEe or None, "IVRT": IVRT or None, "EDV": EDV or None,
-        "Vp": Vp or None, "E_over_Vp": E_over_Vp or None, "DT": DT or None,
+        "E_over_e_mean": E_over_e_mean or None, "E_over_e_septal": E_over_e_sept or None, 
+        "E_over_e_lateral": E_over_e_lat or None, "TR_vmax": TR_vmax or None, 
+        "LAVi": LAVi or None, "LARS": LARS or None, "PV_S": PV_S or None, 
+        "PV_D": PV_D or None, "pulm_SD": None, "Ar_minus_A": Ar_minus_A or None, 
+        "TE_minus_e": TEe or None, "IVRT": IVRT or None, "EDV": EDV or None, 
+        "Vp": Vp or None, "E_over_Vp": E_over_Vp or None, "DT": DT or None, 
         "HR": HR or None, "cycles_averaged": cycles or None, "LVEF": LVEF or None
     }
-    
-    # Create ctx dictionary locally for this step
-    ctx_local = {
-        "rhythm": "AF" if rhythm == "AF" else "sinus",
-        "tachycardia": tachycardia,
-        "bradycardia": bradycardia,
+    ctx = {
+        "rhythm": "AF" if rhythm == "AF" else "sinus", 
+        "tachycardia": tachycardia, 
+        "bradycardia": bradycardia, 
         "poor_acoustic_window": poor_window
     }
-
+    # Check for minimal required fields
     def needed_for_minimal(core_fields, m):
         needed = []
         for f in core_fields:
@@ -1175,41 +1154,61 @@ elif st.session_state.current_step == 2:
                     needed.append("E/e' (mean)")
             else:
                 mapping = {
-                    "TR_vmax": "TR Vmax", "LAVi": "LAVi", "LARS": "LARS",
+                    "TR_vmax": "TR Vmax", "LAVi": "LAVi", "LARS": "LARS", 
                     "Ar_minus_A": "PV Ar-MV A", "IVRT": "IVRT", "DT": "DT"
                 }
                 if not nz(m.get(f)):
                     needed.append(mapping.get(f, f))
         return needed
-
     needed = needed_for_minimal(core, meas)
-
+    # Evaluate or wait
     if auto_eval and len(needed) == 0:
-        result = evaluate_PRVG(meas, ctx_local, age, athlete)
+        result = evaluate_PRVG(meas, ctx, age, athlete)
         st.session_state.result = result
     else:
         result = None
-
+    # Show evaluate controls
     colA, colB, colC = st.columns([2, 1, 1])
     with colA:
         if not auto_eval:
             if st.button(t("evaluate"), key="eval"):
-                result = evaluate_PRVG(meas, ctx_local, age, athlete)
+                result = evaluate_PRVG(meas, ctx, age, athlete)
                 st.session_state.result = result
     with colB:
         st.write("")
         if st.button(t("clear")):
+            # Clear all input values
             for key in st.session_state.keys():
                 if key.endswith('_input'):
                     st.session_state[key] = None
+            st.session_state.selected_parameter = None
             st.rerun()
     with colC:
         st.write("")
         st.caption(f"{t('auto_eval_status')} " + ("enabled" if auto_eval else "disabled"))
-
+    # If auto-eval not ready show info
     if auto_eval and result is None:
         st.info(f"{t('auto_eval_status')} waits for minimal fields: " + ", ".join(needed))
-
+        
+    # Parameter Information Section
+    st.markdown("---")
+    st.markdown(f"#### {t('parameter_info_title')}")
+    st.caption(t("parameter_info_desc"))
+    
+    # Display information for the selected parameter
+    if st.session_state.selected_parameter and st.session_state.selected_parameter in PARAMETER_EXPLANATIONS:
+        param_info = PARAMETER_EXPLANATIONS[st.session_state.selected_parameter]
+        st.markdown(f"""
+        <div class="parameter-info">
+            <h4>{param_info['name']}</h4>
+            <p><strong>Why it matters:</strong> {param_info['why']}</p>
+            <p><strong>How to measure:</strong> {param_info['how']}</p>
+            <p><strong>Pitfalls:</strong> {param_info['pitfalls']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.info("Select a parameter above to see detailed information.")
+    # Navigation buttons
     col_nav1, col_nav2, col_nav3 = st.columns([1, 1, 4])
     with col_nav1:
         if st.button(t("prev_step")):
@@ -1219,7 +1218,6 @@ elif st.session_state.current_step == 2:
         if st.button(t("next_step")) and result is not None:
             st.session_state.current_step = 3
             st.rerun()
-
 # Step 3: Results & Export
 elif st.session_state.current_step == 3:
     st.markdown(f"### {t('step3_title')}")
@@ -1229,59 +1227,57 @@ elif st.session_state.current_step == 3:
             st.session_state.current_step = 2
             st.rerun()
         st.stop()
-
+    # Use values from session state
     presentation = st.session_state.presentation
     rhythm = st.session_state.rhythm
     age = st.session_state.age
     athlete = True if presentation == "Athlete / Young" else False
     result = st.session_state.result
-
-    # Use values from session state for ctx
+    # Create ctx dictionary for this step
     ctx = {
         "rhythm": "AF" if rhythm == "AF" else "sinus",
         "tachycardia": st.session_state.tachycardia,
         "bradycardia": st.session_state.bradycardia,
         "poor_acoustic_window": st.session_state.poor_window
     }
-
+    # Color card
     status = result["status"]
     if status == "High":
         cls = "status-high"
-        status_text = t("result_high")
+        status_text = "🔴 High Probability"
     elif status == "PossibleHigh":
         cls = "status-possible"
-        status_text = t("result_possible")
+        status_text = "🟡 Possible High Probability"
     elif status == "Normal":
         cls = "status-normal"
-        status_text = t("result_normal")
+        status_text = "🟢 Normal Probability"
     else:
         cls = "status-indet"
-        status_text = t("result_indet")
-        
+        status_text = "⚪ Indeterminate"
     st.markdown(f"""
     <div class='result-card {cls}'>
-        <h3 style='margin:4px'>{status_text}</h3>
+        <h3 style='margin:4px'>{status_text} of Elevated Filling Pressures</h3>
         <div style='font-size:15px'>{result.get('narrative','')}</div>
     </div>
     """, unsafe_allow_html=True)
-
+    # Metrics tiles
     t1, t2, t3, t4 = st.columns(4)
     t1.metric("Diastolic Grade", result.get("grade", "NA"))
     t2.metric("Confidence", result.get("confidence", ""))
     t3.metric("Triggered Rules", str(len(result.get("fired", []))))
     t4.metric("Missing Params", str(len(result.get("missing", []))))
-
+    # Algorithm flow visualization
     with st.expander(t("algorithm_flow"), expanded=True):
         st.markdown("#### Algorithm Decision Path")
         for i, step in enumerate(result.get("algorithm_flow", [])):
             step_class = "flow-step abnormal" if "abnormal" in step else "flow-step normal" if "normal" in step else "flow-step"
-            st.markdown(f'<div class="{step_class}">{i + 1}. {step}</div>', unsafe_allow_html=True)
-
+            st.markdown(f'<div class="{step_class}">{i+1}. {step}</div>', unsafe_allow_html=True)
+    # Pitfall alerts
     if result.get("qc"):
         with st.expander(t("pitfall_alerts"), expanded=True):
             for q in result["qc"]:
                 st.markdown(f'<div class="pitfall-alert">⚠️ {q}</div>', unsafe_allow_html=True)
-
+    # Detailed reasoning
     with st.expander(t("detailed_reasoning"), expanded=True):
         if result.get("reasoning"):
             st.markdown(f"#### {t('reasoning_steps')}")
@@ -1295,11 +1291,12 @@ elif st.session_state.current_step == 3:
             st.markdown(f"#### {t('acquisition_notes')}")
             for q in result["qc"]:
                 st.info(f"• {q}")
-
+    # Recommendations
     with st.expander(t("clinical_recommendations")):
         if result.get("reco"):
             for rec in result["reco"]:
                 st.write(f"• {rec}")
+        # Additional context-specific recommendations
         if result["status"] == "High":
             st.write("• Consider correlation with NT-proBNP/BNP levels if available.")
             st.write("• Evaluate for signs and symptoms of heart failure.")
@@ -1307,7 +1304,7 @@ elif st.session_state.current_step == 3:
                 st.write("• In AF, consider rate control strategy to improve diastolic filling.")
         if athlete and result["status"] in ["High", "PossibleHigh"]:
             st.write("• In athletes, consider exercise stress echocardiography to distinguish physiological from pathological adaptation.")
-
+    # Parameter explanations
     with st.expander(t("parameter_explanations")):
         st.markdown(f"#### {t('why_matter')}")
         st.markdown("""
@@ -1315,9 +1312,10 @@ elif st.session_state.current_step == 3:
         as no single measurement is perfectly accurate. The algorithm follows ASE/EACVI guidelines to integrate
         these parameters into a comprehensive assessment.
         """)
+        # Get measurements from session state
         used_params = []
         for key in st.session_state.keys():
-            if key.endswith('_input') and st.session_state[key] is not None:
+            if key.endswith('_input') and st.session_state[key] is not None and st.session_state[key] != 0:
                 param_name = key.replace('_input', '')
                 if param_name in PARAMETER_EXPLANATIONS:
                     used_params.append(param_name)
@@ -1325,25 +1323,22 @@ elif st.session_state.current_step == 3:
             st.markdown(f"##### {t('parameters_provided')}")
             for param in used_params:
                 exp = PARAMETER_EXPLANATIONS[param]
-                st.markdown(f"**{param}**")
+                st.markdown(f"**{exp['name']}**")
                 st.markdown(f"<div class='why-box'>{exp['why']}</div>", unsafe_allow_html=True)
                 st.markdown(f"<div class='how-box'>{exp['how']}</div>", unsafe_allow_html=True)
                 if "pitfalls" in exp:
                     st.markdown(f"**Pitfalls:** {exp['pitfalls']}")
         else:
             st.info("No parameters with explanations were provided.")
-
+    # Export & report section
     st.markdown("---")
     st.markdown(f"#### {t('export_report')}")
-    
-    # Create a more structured summary
+    # summary text
+    now = datetime.utcnow().isoformat(timespec="seconds") + "Z"
     summary_lines = [
-        f"PRVG Assistant Comprehensive Report",
-        f"==================================",
+        f"PRVG Assistant Comprehensive Report — {now}",
         f"Presentation: {presentation} (Age {age})  Rhythm: {rhythm}",
-        f"Result: {status_text}",
-        f"Diastolic Grade: {result.get('grade', 'NA')}",
-        f"Confidence: {result.get('confidence', '')}",
+        f"Result: {result['status']}  Grade: {result.get('grade','NA')}  Confidence: {result.get('confidence','')}",
         "",
         "Narrative:",
         result.get('narrative', ''),
@@ -1365,39 +1360,41 @@ elif st.session_state.current_step == 3:
         "",
         "Measurements provided:"
     ])
+    # Get measurements from session state
     for key in st.session_state.keys():
-        if key.endswith('_input') and st.session_state[key] is not None:
+        if key.endswith('_input') and st.session_state[key] is not None and st.session_state[key] != 0:
             param_name = key.replace('_input', '')
             summary_lines.append(f"- {param_name}: {st.session_state[key]}")
     summary_text = "\n".join(summary_lines)
-
+    # Create two columns for export buttons
     exp_col1, exp_col2 = st.columns(2)
     with exp_col1:
-        st.download_button(t("download_full"), data=summary_text,
-                           file_name="prvg_comprehensive_report.txt", mime="text/plain")
+        st.download_button(t("download_full"), data=summary_text, 
+                          file_name="prvg_comprehensive_report.txt", mime="text/plain")
     with exp_col2:
+        # Create data for CSV export
         data_dict = {}
         for key in st.session_state.keys():
-            if key.endswith('_input') and st.session_state[key] is not None:
+            if key.endswith('_input') and st.session_state[key] is not None and st.session_state[key] != 0:
                 param_name = key.replace('_input', '')
                 data_dict[param_name] = [st.session_state[key]]
+        # Add context information
         data_dict["Presentation"] = [presentation]
         data_dict["Age"] = [age]
         data_dict["Rhythm"] = [rhythm]
-        data_dict["Result"] = [status_text]
+        data_dict["Result"] = [result['status']]
         data_dict["Grade"] = [result.get('grade', 'NA')]
         data_dict["Confidence"] = [result.get('confidence', '')]
         df = pd.DataFrame(data_dict)
-        st.download_button(t("download_csv"), data=df.to_csv(index=False),
-                           file_name="prvg_data.csv", mime="text/csv")
+        st.download_button(t("download_csv"), data=df.to_csv(index=False), 
+                          file_name="prvg_data.csv", mime="text/csv")
     st.text_area(t("report_summary"), value=summary_text, height=250)
-
+    # Navigation buttons
     col_nav1, col_nav2 = st.columns([1, 5])
     with col_nav1:
         if st.button(t("prev_step")):
             st.session_state.current_step = 2
             st.rerun()
-
 # Footer
 st.markdown("---")
 st.markdown(f"""

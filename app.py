@@ -476,7 +476,7 @@ EXAMPLE_CASES = {
         "age": 68,
         "presentation": "Atrial Fibrillation",
         "rhythm": "AF",
-        "IVRT": 60.0,
+        "IVRT": 60,
         "TR_vmax": 3.0,
         "E_over_e_septal": 16.0,
         "EDV": 35.0,
@@ -1404,7 +1404,7 @@ elif st.session_state.current_step == 3:
     
     summary_lines.extend([
         "",
-        "Triggered rules: " + (", ".join(result.get("fired", [])) or "none"),
+        "Triggered rules: " + ((", ".join(result.get("fired", [])) if result.get("fired") else "none")),
         "Recommendations:",
     ])
     if result.get("reco"):

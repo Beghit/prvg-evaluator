@@ -1,3 +1,4 @@
+```python
 # app.py
 # Streamlit PRVG Assistant — Enhanced with clinical adaptation, UI/UX improvements, and educational features
 import streamlit as st
@@ -7,9 +8,7 @@ import json
 from datetime import datetime
 import base64
 from io import BytesIO
-
 st.set_page_config(page_title="PRVG Assistant", page_icon="🫀", layout="wide")
-
 # -----------------------
 # CSS Styling - Simplified
 # -----------------------
@@ -137,7 +136,6 @@ st.markdown("""
 }
 </style>
 """, unsafe_allow_html=True)
-
 # -----------------------
 # Internationalization (English and French only)
 # -----------------------
@@ -249,17 +247,14 @@ LANGUAGES = {
         "disclaimer": "Avertissement: Cet outil est destiné à l'aide à la décision clinique et ne doit pas être utilisé pour un diagnóstico autonome."
     }
 }
-
 # Initialize session state for wizard steps and language
 if 'current_step' not in st.session_state:
     st.session_state.current_step = 1
 if 'language' not in st.session_state:
     st.session_state.language = "English"
-
 # Get current language strings
 def t(key):
     return LANGUAGES[st.session_state.language].get(key, key)
-
 # -----------------------
 # Profiles / thresholds with age and athlete adjustments
 # -----------------------
@@ -287,7 +282,6 @@ def get_profile(age, athlete=False):
         "EDV_AF_low": 220.0,
         "E_over_Vp_AF_abn": 1.4,
     }
-    
     # Age adjustments
     if age < 40:
         # Younger patients have higher e' values
@@ -301,16 +295,13 @@ def get_profile(age, athlete=False):
         base_profile["e_lateral_low"] = 6.0
         base_profile["e_mean_low"] = 5.5
         base_profile["LAVi_abn"] = 38.0  # Slightly higher LAVi threshold for elderly
-    
     # Athlete adjustments
     if athlete:
         base_profile["E_A_restrictive"] = 2.2  # Higher threshold for athletes
         base_profile["E_e_mean_abn"] = 16.0  # Higher threshold for athletes
         base_profile["E_e_septal_abn"] = 17.0  # Higher threshold for athletes
         base_profile["E_e_lateral_abn"] = 15.0  # Higher threshold for athletes
-    
     return base_profile
-
 # -----------------------
 # Medical Knowledge Base with enhanced content
 # -----------------------
@@ -411,7 +402,6 @@ PARAMETER_EXPLANATIONS = {
         "pitfalls": "Technically challenging. Requires high frame rate imaging."
     }
 }
-
 # -----------------------
 # Example Cases
 # -----------------------
@@ -461,32 +451,25 @@ EXAMPLE_CASES = {
         "LAVi": 36.0
     }
 }
-
 # -----------------------
 # Utilities
 # -----------------------
 def nz(x): 
-    return x is not None and (not (isinstance(x, float) and (x != x)))
-
+    return x is not None and not (isinstance(x, float) and (x != x))
 def safe_mean(*vals):
     vs = [v for v in vals if nz(v)]
     return sum(vs)/len(vs) if vs else None
-
 def compute_derived(meas):
     if nz(meas.get("E")) and nz(meas.get("A")) and meas.get("A") != 0:
         meas["EA"] = meas["E"]/meas["A"]
     else:
         meas["EA"] = meas.get("EA")
-    
     if not nz(meas.get("e_mean")):
         meas["e_mean"] = safe_mean(meas.get("e_septal"), meas.get("e_lateral"))
-    
     if not nz(meas.get("pulm_SD")) and nz(meas.get("PV_S")) and nz(meas.get("PV_D")) and meas.get("PV_D") != 0:
         meas["pulm_SD"] = meas["PV_S"]/meas["PV_D"]
-    
     if not nz(meas.get("E_over_Vp")) and nz(meas.get("E")) and nz(meas.get("Vp")) and meas.get("Vp") != 0:
         meas["E_over_Vp"] = meas["E"]/meas["Vp"]
-
 def qc_notes(meas, ctx):
     notes = []
     if ctx["rhythm"] == "AF" and (not nz(meas.get("cycles_averaged")) or meas.get("cycles_averaged") < 5):
@@ -499,7 +482,6 @@ def qc_notes(meas, ctx):
         notes.append("Bradycardia may alter E/A relation.")
     if ctx.get("poor_acoustic_window"):
         notes.append("Poor acoustic window — consider LARS or contrast.")
-    
     # Add pitfall alerts
     if ctx["rhythm"] == "AF" and nz(meas.get("EA")):
         notes.append("E/A unreliable in AF → use E/e' instead.")
@@ -507,51 +489,38 @@ def qc_notes(meas, ctx):
         notes.append("E/e' ratio >20 may indicate severely elevated pressures.")
     if nz(meas.get("LAVi")) and meas.get("LAVi") > 50:
         notes.append("Severe LA enlargement present.")
-    
     return notes
-
 def create_tooltip(parameter_name):
     explanation = PARAMETER_EXPLANATIONS.get(parameter_name, {})
     why = explanation.get("why", "No explanation available.")
     how = explanation.get("how", "No measurement instructions available.")
-    
     tooltip_html = f"""
-    <div class="tooltip-icon" title="{why}&#10;&#10;How to measure: {how}">ℹ️</div>
+    <span class="tooltip-icon" title="{why}&#10;&#10;How to measure: {how}">ℹ️</span>
     """
     return tooltip_html
-
 # Atomic rule checks
 def rule_low_e_prime(meas, P):
     return (nz(meas.get("e_mean")) and meas["e_mean"] <= P["e_mean_low"]) or \
            (nz(meas.get("e_septal")) and meas["e_septal"] <= P["e_septal_low"]) or \
            (nz(meas.get("e_lateral")) and meas["e_lateral"] <= P["e_lateral_low"])
-
 def rule_Ee_high(meas, P):
     return (nz(meas.get("E_over_e_mean")) and meas["E_over_e_mean"] >= P["E_e_mean_abn"]) or \
            (nz(meas.get("E_over_e_septal")) and meas["E_over_e_septal"] >= P["E_e_septal_abn"]) or \
            (nz(meas.get("E_over_e_lateral")) and meas["E_over_e_lateral"] >= P["E_e_lateral_abn"])
-
 def rule_TR_high(meas, P): 
     return nz(meas.get("TR_vmax")) and meas["TR_vmax"] >= P["TR_vmax_abn"]
-
 def rule_LAVi_high(meas, P): 
     return nz(meas.get("LAVi")) and meas["LAVi"] >= P["LAVi_abn"]
-
 def rule_LARS_low(meas, P): 
     return nz(meas.get("LARS")) and meas["LARS"] <= P["LARS_low"]
-
 def rule_pv_SD_low(meas, P): 
     return nz(meas.get("pulm_SD")) and meas["pulm_SD"] <= P["pulm_SD_low"]
-
 def rule_IVRT_short(meas, P): 
     return nz(meas.get("IVRT")) and meas["IVRT"] <= P["IVRT_short_sinus"]
-
 def rule_restrictive_inflow(meas, P): 
     return nz(meas.get("EA")) and meas["EA"] >= P["E_A_restrictive"]
-
 def rule_low_EA(meas, P): 
     return nz(meas.get("EA")) and meas["EA"] <= P["E_A_low_cut"]
-
 def collect_surrogates(meas, P):
     tags = []
     if rule_Ee_high(meas, P): 
@@ -567,7 +536,6 @@ def collect_surrogates(meas, P):
     if rule_IVRT_short(meas, P): 
         tags.append("Short IVRT")
     return tags
-
 # Decision engine with comprehensive medical reasoning
 def evaluate_PRVG(meas, ctx, age, athlete):
     P = get_profile(age, athlete)
@@ -576,7 +544,6 @@ def evaluate_PRVG(meas, ctx, age, athlete):
     fired = []
     missing = []
     reasoning = []
-
     # Check minimal requirements based on rhythm
     if ctx["rhythm"] == "AF":
         # AF-specific requirements
@@ -588,7 +555,6 @@ def evaluate_PRVG(meas, ctx, age, athlete):
         if not any([nz(meas.get("EA")), nz(meas.get("E_over_e_mean")), nz(meas.get("TR_vmax")), nz(meas.get("LAVi"))]):
             missing = ["E/A or E/e' or TR Vmax or LAVi"]
             reasoning.append("In sinus rhythm, at least one of E/A, E/e', TR Vmax, or LAVi is needed for assessment.")
-
     # If missing critical parameters -> return indeterminate
     if missing:
         return {
@@ -603,37 +569,30 @@ def evaluate_PRVG(meas, ctx, age, athlete):
             "reco": ["Acquire missing core indices; consider LARS or natriuretic peptides if available."],
             "algorithm_flow": ["Missing critical parameters for assessment."]
         }
-
     # Main decision logic
     # AF branch
     if ctx["rhythm"] == "AF":
         flags = []
         reasoning_af = []
         algorithm_flow = ["Atrial Fibrillation algorithm branch"]
-        
         if nz(meas.get("IVRT")) and meas["IVRT"] <= P["IVRT_short_AF"]:
             flags.append("Short IVRT (AF)")
             reasoning_af.append(f"IVRT of {meas['IVRT']} ms ≤ {P['IVRT_short_AF']} ms suggests elevated filling pressures in AF.")
             algorithm_flow.append(f"IVRT {meas['IVRT']} ms ≤ {P['IVRT_short_AF']} ms → abnormal")
-        
         if nz(meas.get("E_over_e_septal")) and meas["E_over_e_septal"] >= P["E_e_septal_abn"]:
             flags.append("E/e' septal high")
             reasoning_af.append(f"E/e' septal ratio of {meas['E_over_e_septal']} ≥ {P['E_e_septal_abn']} suggests elevated filling pressures.")
             algorithm_flow.append(f"E/e' septal {meas['E_over_e_septal']} ≥ {P['E_e_septal_abn']} → abnormal")
-        
         if rule_TR_high(meas, P): 
             flags.append("TR Vmax high")
             reasoning_af.append(f"TR Vmax of {meas['TR_vmax']} m/s ≥ {P['TR_vmax_abn']} m/s suggests pulmonary hypertension.")
             algorithm_flow.append(f"TR Vmax {meas['TR_vmax']} m/s ≥ {P['TR_vmax_abn']} m/s → abnormal")
-        
         if nz(meas.get("E_over_Vp")) and meas["E_over_Vp"] >= P["E_over_Vp_AF_abn"]:
             flags.append("E/Vp high")
             reasoning_af.append(f"E/Vp ratio of {meas['E_over_Vp']} ≥ {P['E_over_Vp_AF_abn']} suggests elevated filling pressures in AF.")
             algorithm_flow.append(f"E/Vp {meas['E_over_Vp']} ≥ {P['E_over_Vp_AF_abn']} → abnormal")
-        
         # Decision making for AF
         reasoning.extend(reasoning_af)
-        
         if len(flags) >= 2:
             status = "High"
             confidence = "High"
@@ -649,7 +608,6 @@ def evaluate_PRVG(meas, ctx, age, athlete):
             confidence = "Low"
             narrative = "No AF-specific surrogate clearly abnormal. Consider additional parameters."
             algorithm_flow.append("No abnormal parameters → Indeterminate")
-        
         return {
             "status": status,
             "grade": "NA",
@@ -662,23 +620,19 @@ def evaluate_PRVG(meas, ctx, age, athlete):
             "reco": ["Average multiple beats; consider invasive measurement if clinical decisions depend on LAP."],
             "algorithm_flow": algorithm_flow
         }
-
     # Sinus rhythm branch
     EA = meas.get("EA")
     surrogates = collect_surrogates(meas, P)
     reasoning_sr = []
     algorithm_flow = ["Sinus rhythm algorithm branch"]
-    
     # Low EA (impaired relaxation)
     if rule_low_EA(meas, P):
         reasoning_sr.append(f"E/A ratio of {EA} ≤ {P['E_A_low_cut']} indicates impaired relaxation (Grade I diastolic dysfunction).")
         algorithm_flow.append(f"E/A {EA} ≤ {P['E_A_low_cut']} → impaired relaxation")
-        
         if len(surrogates) >= 1:
             fired = ["E/A low"] + surrogates
             reasoning_sr.append(f"Abnormal surrogates ({', '.join(surrogates)}) suggest elevated LAP despite impaired relaxation pattern.")
             algorithm_flow.append(f"Abnormal surrogates present → Grade I with elevated LAP")
-            
             return {
                 "status": "High",
                 "grade": "G1_with_high_LAP",
@@ -705,12 +659,10 @@ def evaluate_PRVG(meas, ctx, age, athlete):
                 "reco": ["Follow clinical context."],
                 "algorithm_flow": algorithm_flow
             }
-    
     # Restrictive inflow
     if rule_restrictive_inflow(meas, P):
         reasoning_sr.append(f"E/A ratio of {EA} ≥ {P['E_A_restrictive']} indicates restrictive filling pattern (Grade III diastolic dysfunction).")
         algorithm_flow.append(f"E/A {EA} ≥ {P['E_A_restrictive']} → restrictive pattern")
-        
         # Apply athlete/young exception
         if athlete and age < 40:
             reasoning_sr.append("Athlete/young exception applied: restrictive pattern may be normal in highly trained individuals.")
@@ -723,10 +675,8 @@ def evaluate_PRVG(meas, ctx, age, athlete):
             reco = ["Confirm with LAVi/TR and consider invasive testing if discordant."]
             confidence = "High" if len(surrogates)>=1 else "Medium"
             algorithm_flow.append("Restrictive pattern confirmed → Grade III")
-        
         fired = ["E/A restrictive"] + surrogates
         reasoning_sr.extend([f"Surrogate(s) abnormal: {', '.join(surrogates)}"] if surrogates else ["No additional abnormal surrogates."])
-        
         return {
             "status": "High",
             "grade": "G3",
@@ -739,17 +689,14 @@ def evaluate_PRVG(meas, ctx, age, athlete):
             "reco": reco,
             "algorithm_flow": algorithm_flow
         }
-
     # Intermediate EA (pseudonormal)
     if EA and 0.8 < EA < P["E_A_restrictive"]:
         reasoning_sr.append(f"E/A ratio of {EA} suggests pseudonormal filling (Grade II diastolic dysfunction).")
         algorithm_flow.append(f"E/A {EA} → pseudonormal pattern")
-        
         if len(surrogates) >= 2:
             fired = surrogates
             reasoning_sr.append(f"Multiple abnormal surrogates ({', '.join(surrogates)}) strongly suggest elevated LAP.")
             algorithm_flow.append("≥2 abnormal surrogates → elevated LAP")
-            
             return {
                 "status": "High",
                 "grade": "G2",
@@ -766,7 +713,6 @@ def evaluate_PRVG(meas, ctx, age, athlete):
             fired = surrogates
             reasoning_sr.append(f"One abnormal surrogate ({surrogates[0]}) suggests possible elevated LAP.")
             algorithm_flow.append("1 abnormal surrogate → possible elevated LAP")
-            
             return {
                 "status": "PossibleHigh",
                 "grade": "NA",
@@ -782,7 +728,6 @@ def evaluate_PRVG(meas, ctx, age, athlete):
         else:
             reasoning_sr.append("No abnormal surrogates suggest normal LAP despite pseudonormal pattern.")
             algorithm_flow.append("No abnormal surrogates → normal LAP")
-            
             return {
                 "status": "Normal",
                 "grade": "NA",
@@ -795,11 +740,9 @@ def evaluate_PRVG(meas, ctx, age, athlete):
                 "reco": ["If symptoms persist, perform stress diastolic testing."],
                 "algorithm_flow": algorithm_flow
             }
-
     # Fallback safety net
     reasoning_sr.append("Could not classify with confidence — data borderline or conflicting.")
     algorithm_flow.append("Data borderline or conflicting → indeterminate")
-    
     return {
         "status": "Indeterminate",
         "grade": "NA",
@@ -812,47 +755,38 @@ def evaluate_PRVG(meas, ctx, age, athlete):
         "reco": ["Obtain additional indices: LARS, PV flow, TR, or consider invasive hemodynamics."],
         "algorithm_flow": algorithm_flow
     }
-
 # -----------------------
 # UI Implementation
 # -----------------------
 # Language selector in sidebar
 with st.sidebar:
     st.session_state.language = st.selectbox("Language", list(LANGUAGES.keys()), index=0)
-    
     # Voice input placeholder
     st.write(f"🔊 {t('voice_input')} (Coming soon)")
-    
     # Example cases
     st.markdown("---")
     st.subheader(t("try_example"))
     example_case = st.selectbox("Select example case", list(EXAMPLE_CASES.keys()))
-    
     if st.button("Load Example"):
         case_data = EXAMPLE_CASES[example_case]
-        
         # Set session state values for all inputs
         for key, value in case_data.items():
             if key in ["age", "presentation", "rhythm"]:
                 st.session_state[key] = value
             else:
                 st.session_state[f"{key}_input"] = value
-        
         # Set contextual flags based on presentation
         if case_data["presentation"] == "Athlete / Young":
             st.session_state.athlete = True
         else:
             st.session_state.athlete = False
-            
         # Set rhythm
         if case_data["rhythm"] == "AF":
             st.session_state.rhythm_af = True
         else:
             st.session_state.rhythm_af = False
-            
         st.success(f"Loaded {example_case} example")
         st.rerun()
-    
     # References
     st.markdown("---")
     st.subheader(t("references"))
@@ -860,7 +794,6 @@ with st.sidebar:
     - Nagueh SF et al. Recommendations for the Evaluation of Left Ventricular Diastolic Function by Echocardiography. JASE 2016.
     - Lancellotti P et al. EACVI recommendations for the assessment of left ventricular filling pressure. Eur Heart J Cardiovasc Imaging 2024.
     """)
-
 # Wizard navigation
 st.markdown(f"""
 <div class='card'>
@@ -868,7 +801,6 @@ st.markdown(f"""
     <div class='small-muted'>{t('disclaimer')}</div>
 </div>
 """, unsafe_allow_html=True)
-
 # Wizard steps
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -880,7 +812,6 @@ with col2:
 with col3:
     step3_class = "wizard-step active" if st.session_state.current_step == 3 else "wizard-step"
     st.markdown(f'<div class="{step3_class}"><h4>{t("step3_title")}</h4></div>', unsafe_allow_html=True)
-
 # Initialize session state variables if they don't exist
 if 'age' not in st.session_state:
     st.session_state.age = 65
@@ -898,11 +829,9 @@ if 'bradycardia' not in st.session_state:
     st.session_state.bradycardia = False
 if 'poor_window' not in st.session_state:
     st.session_state.poor_window = False
-
 # Step 1: Patient Information
 if st.session_state.current_step == 1:
     st.markdown(f"### {t('step1_title')}")
-    
     with st.container():
         p1, p2, p3 = st.columns([2, 1, 1])
         with p1:
@@ -916,7 +845,6 @@ if st.session_state.current_step == 1:
             )
             age = st.number_input(t("age"), min_value=12, max_value=110, value=st.session_state.age, step=1, key="age_input")
             athlete = True if presentation == "Athlete / Young" else False
-            
         with p2:
             rhythm = st.radio(t("rhythm"), ["Sinus", "AF"], 
                              index=0 if st.session_state.rhythm == "Sinus" else 1, 
@@ -925,7 +853,6 @@ if st.session_state.current_step == 1:
                                       help="Show only the most relevant parameters for the selected presentation",
                                       key="minimal_mode_check")
             auto_eval = st.checkbox(t("auto_eval"), value=st.session_state.auto_eval, key="auto_eval_check")
-            
         with p3:
             st.write("")  # spacing
             st.caption(t("profile"))
@@ -939,7 +866,6 @@ if st.session_state.current_step == 1:
             poor_window = st.checkbox(t("poor_window"), value=st.session_state.poor_window, 
                                      help="Consider LARS or contrast enhancement",
                                      key="poor_window_check")
-    
     # Navigation buttons
     col_nav1, col_nav2 = st.columns([1, 5])
     with col_nav1:
@@ -953,14 +879,11 @@ if st.session_state.current_step == 1:
             st.session_state.tachycardia = tachycardia
             st.session_state.bradycardia = bradycardia
             st.session_state.poor_window = poor_window
-            
             st.session_state.current_step = 2
             st.rerun()
-
 # Step 2: Key Parameters
 elif st.session_state.current_step == 2:
     st.markdown(f"### {t('step2_title')}")
-    
     # Use values from session state
     presentation = st.session_state.presentation
     rhythm = st.session_state.rhythm
@@ -971,7 +894,6 @@ elif st.session_state.current_step == 2:
     poor_window = st.session_state.poor_window
     age = st.session_state.age
     athlete = True if presentation == "Athlete / Young" else False
-    
     # Determine minimal fields based on presentation
     def minimal_fields(pres, rhythm):
         if pres == "Athlete / Young":
@@ -986,22 +908,16 @@ elif st.session_state.current_step == 2:
             return ["E_over_e_mean", "TR_vmax", "LAVi"]
         # Default
         return ["E", "A", "one_e_prime", "TR_vmax", "LAVi"]
-
     core = minimal_fields(presentation, rhythm)
-    
     # Show required fields
     st.markdown(f"**{t('required_fields')}** {', '.join(core)}")
-    
     # Inputs area with tooltips
     st.markdown(f"### {t('measurements')}")
     st.caption(t("minimal_mode_desc"))
-
     # Create input sections with tooltips
     cols = st.columns(3)
-
     def show_if(name):
         return (not minimal_mode) or (name in core)
-
     with cols[0]:
         st.markdown(f"#### {t('mitral_inflow')}")
         # Initialize session state for inputs if not exists
@@ -1011,14 +927,12 @@ elif st.session_state.current_step == 2:
             st.session_state.A_input = None
         if 'EA_input' not in st.session_state:
             st.session_state.EA_input = None
-            
         E = st.number_input(f"E (cm/s) {create_tooltip('E')}", min_value=0.0, step=0.1, format="%.1f", 
                            disabled=not show_if("E"), key="E_input", value=st.session_state.E_input)
         A = st.number_input(f"A (cm/s) {create_tooltip('A')}", min_value=0.0, step=0.1, format="%.1f", 
                            disabled=not show_if("A"), key="A_input", value=st.session_state.A_input)
         EA = st.number_input("E/A ratio (if pre-calculated)", min_value=0.0, step=0.1, format="%.1f", 
                             disabled=not show_if("EA"), key="EA_input", value=st.session_state.EA_input)
-
     with cols[1]:
         st.markdown(f"#### {t('tissue_doppler')}")
         # Initialize session state for inputs if not exists
@@ -1032,7 +946,6 @@ elif st.session_state.current_step == 2:
             st.session_state.E_over_e_lateral_input = None
         if 'E_over_e_mean_input' not in st.session_state:
             st.session_state.E_over_e_mean_input = None
-            
         e_sept = st.number_input(f"e' septal (cm/s) {create_tooltip('e_septal')}", min_value=0.0, step=0.1, format="%.1f", 
                                 disabled=not (show_if("e_septal") or show_if("one_e_prime")), key="e_septal_input", value=st.session_state.e_septal_input)
         e_lat = st.number_input(f"e' lateral (cm/s) {create_tooltip('e_lateral')}", min_value=0.0, step=0.1, format="%.1f", 
@@ -1043,7 +956,6 @@ elif st.session_state.current_step == 2:
                                       disabled=not show_if("E_over_e_lateral"), key="E_over_e_lateral_input", value=st.session_state.E_over_e_lateral_input)
         E_over_e_mean = st.number_input(f"E/e' mean {create_tooltip('E_over_e_mean')}", min_value=0.0, step=0.1, format="%.1f", 
                                        disabled=not show_if("E_over_e_mean"), key="E_over_e_mean_input", value=st.session_state.E_over_e_mean_input)
-
     with cols[2]:
         st.markdown(f"#### {t('other_params')}")
         # Initialize session state for inputs if not exists
@@ -1053,18 +965,15 @@ elif st.session_state.current_step == 2:
             st.session_state.LAVi_input = None
         if 'LARS_input' not in st.session_state:
             st.session_state.LARS_input = None
-            
         TR_vmax = st.number_input(f"TR Vmax (m/s) {create_tooltip('TR_vmax')}", min_value=0.0, step=0.01, format="%.2f", 
                                  disabled=not show_if("TR_vmax"), key="TR_vmax_input", value=st.session_state.TR_vmax_input)
         LAVi = st.number_input(f"LAVi (mL/m²) {create_tooltip('LAVi')}", min_value=0.0, step=0.1, format="%.1f", 
                               disabled=not show_if("LAVi"), key="LAVi_input", value=st.session_state.LAVi_input)
         LARS = st.number_input(f"LA reservoir strain (LARS %) {create_tooltip('LARS')}", min_value=0.0, step=0.1, format="%.1f", 
                               disabled=not show_if("LARS"), key="LARS_input", value=st.session_state.LARS_input)
-
     # Advanced parameters
     with st.expander(t("advanced_params")):
         adv_cols = st.columns(2)
-        
         with adv_cols[0]:
             st.markdown(f"#### {t('pulmonary_vein')}")
             # Initialize session state for inputs if not exists
@@ -1074,7 +983,6 @@ elif st.session_state.current_step == 2:
                 st.session_state.PV_D_input = None
             if 'Ar_minus_A_input' not in st.session_state:
                 st.session_state.Ar_minus_A_input = None
-                
             PV_S = st.number_input(f"PV S (cm/s) {create_tooltip('PV_S')}", min_value=0.0, step=0.1, format="%.1f", 
                                   key="PV_S_input", value=st.session_state.PV_S_input)
             PV_D = st.number_input(f"PV D (cm/s) {create_tooltip('PV_D')}", min_value=0.0, step=0.1, format="%.1f", 
@@ -1082,7 +990,6 @@ elif st.session_state.current_step == 2:
             # Fixed: Changed min_value from 0.0 to 0 and format from "%.0f" to "%d"
             Ar_minus_A = st.number_input(f"PV Ar - MV A (ms) {create_tooltip('Ar_minus_A')}", min_value=0, step=1, format="%d",
                                         disabled=not show_if("Ar_minus_A"), key="Ar_minus_A_input", value=st.session_state.Ar_minus_A_input)
-        
         with adv_cols[1]:
             st.markdown(f"#### {t('other_advanced')}")
             # Initialize session state for inputs if not exists
@@ -1098,7 +1005,6 @@ elif st.session_state.current_step == 2:
                 st.session_state.E_over_Vp_input = None
             if 'TE_minus_e_input' not in st.session_state:
                 st.session_state.TE_minus_e_input = None
-                
             # Fixed: Changed min_value from 0.0 to 0 and format from "%.0f" to "%d"
             IVRT = st.number_input(f"IVRT (ms) {create_tooltip('IVRT')}", min_value=0, step=1, format="%d",
                                   key="IVRT_input", value=st.session_state.IVRT_input)
@@ -1114,31 +1020,26 @@ elif st.session_state.current_step == 2:
             # Fixed: Changed min_value from 0.0 to 0 and format from "%.0f" to "%d"
             TEe = st.number_input(f"TE - e' (ms) {create_tooltip('TE_minus_e')}", min_value=0, step=1, format="%d",
                                  key="TE_minus_e_input", value=st.session_state.TE_minus_e_input)
-            
         st.markdown(f"#### {t('contextual_params')}")
         ctx_cols = st.columns(3)
         with ctx_cols[0]:
             # Initialize session state for inputs if not exists
             if 'cycles_input' not in st.session_state:
                 st.session_state.cycles_input = None
-                
             cycles = st.number_input("Averaged cycles (AF)", min_value=0, step=1, format="%d", 
                                     key="cycles_input", value=st.session_state.cycles_input)
         with ctx_cols[1]:
             # Initialize session state for inputs if not exists
             if 'HR_input' not in st.session_state:
                 st.session_state.HR_input = None
-                
             HR = st.number_input("HR (bpm)", min_value=0, step=1, format="%d", 
                                 key="HR_input", value=st.session_state.HR_input)
         with ctx_cols[2]:
             # Initialize session state for inputs if not exists
             if 'LVEF_input' not in st.session_state:
                 st.session_state.LVEF_input = None
-                
             LVEF = st.number_input("LVEF (%)", min_value=0, max_value=100, step=1, format="%d", 
                                   key="LVEF_input", value=st.session_state.LVEF_input)
-
     # Measurement dictionary
     meas = {
         "E": E or None, "A": A or None, "EA": EA or None,
@@ -1151,14 +1052,12 @@ elif st.session_state.current_step == 2:
         "Vp": Vp or None, "E_over_Vp": E_over_Vp or None, "DT": DT or None, 
         "HR": HR or None, "cycles_averaged": cycles or None, "LVEF": LVEF or None
     }
-
     ctx = {
         "rhythm": "AF" if rhythm == "AF" else "sinus", 
         "tachycardia": tachycardia, 
         "bradycardia": bradycardia, 
         "poor_acoustic_window": poor_window
     }
-
     # Check for minimal required fields
     def needed_for_minimal(core_fields, m):
         needed = []
@@ -1183,16 +1082,13 @@ elif st.session_state.current_step == 2:
                 if not nz(m.get(f)):
                     needed.append(mapping.get(f, f))
         return needed
-
     needed = needed_for_minimal(core, meas)
-
     # Evaluate or wait
     if auto_eval and len(needed) == 0:
         result = evaluate_PRVG(meas, ctx, age, athlete)
         st.session_state.result = result
     else:
         result = None
-
     # Show evaluate controls
     colA, colB, colC = st.columns([2, 1, 1])
     with colA:
@@ -1211,11 +1107,9 @@ elif st.session_state.current_step == 2:
     with colC:
         st.write("")
         st.caption(f"{t('auto_eval_status')} " + ("enabled" if auto_eval else "disabled"))
-
     # If auto-eval not ready show info
     if auto_eval and result is None:
         st.info(f"{t('auto_eval_status')} waits for minimal fields: " + ", ".join(needed))
-
     # Navigation buttons
     col_nav1, col_nav2, col_nav3 = st.columns([1, 1, 4])
     with col_nav1:
@@ -1226,26 +1120,21 @@ elif st.session_state.current_step == 2:
         if st.button(t("next_step")) and result is not None:
             st.session_state.current_step = 3
             st.rerun()
-
 # Step 3: Results & Export
 elif st.session_state.current_step == 3:
     st.markdown(f"### {t('step3_title')}")
-    
     if 'result' not in st.session_state:
         st.warning("Please go back to Step 2 and evaluate first.")
         if st.button(t("prev_step")):
             st.session_state.current_step = 2
             st.rerun()
         st.stop()
-    
     # Use values from session state
     presentation = st.session_state.presentation
     rhythm = st.session_state.rhythm
     age = st.session_state.age
     athlete = True if presentation == "Athlete / Young" else False
-    
     result = st.session_state.result
-    
     # Color card
     status = result["status"]
     if status == "High":
@@ -1260,67 +1149,56 @@ elif st.session_state.current_step == 3:
     else:
         cls = "status-indet"
         status_text = "⚪ Indeterminate"
-    
     st.markdown(f"""
     <div class='result-card {cls}'>
         <h3 style='margin:4px'>{status_text} of Elevated Filling Pressures</h3>
         <div style='font-size:15px'>{result.get('narrative','')}</div>
     </div>
     """, unsafe_allow_html=True)
-
     # Metrics tiles
     t1, t2, t3, t4 = st.columns(4)
     t1.metric("Diastolic Grade", result.get("grade", "NA"))
     t2.metric("Confidence", result.get("confidence", ""))
     t3.metric("Triggered Rules", str(len(result.get("fired", []))))
     t4.metric("Missing Params", str(len(result.get("missing", []))))
-
     # Algorithm flow visualization
     with st.expander(t("algorithm_flow"), expanded=True):
         st.markdown("#### Algorithm Decision Path")
         for i, step in enumerate(result.get("algorithm_flow", [])):
             step_class = "flow-step abnormal" if "abnormal" in step else "flow-step normal" if "normal" in step else "flow-step"
             st.markdown(f'<div class="{step_class}">{i+1}. {step}</div>', unsafe_allow_html=True)
-
     # Pitfall alerts
     if result.get("qc"):
         with st.expander(t("pitfall_alerts"), expanded=True):
             for q in result["qc"]:
                 st.markdown(f'<div class="pitfall-alert">⚠️ {q}</div>', unsafe_allow_html=True)
-
     # Detailed reasoning
     with st.expander(t("detailed_reasoning"), expanded=True):
         if result.get("reasoning"):
             st.markdown(f"#### {t('reasoning_steps')}")
             for i, reason in enumerate(result["reasoning"], 1):
                 st.markdown(f"{i}. {reason}")
-        
         if result.get("fired"):
             st.markdown(f"#### {t('rules_triggered')}")
             for r in result["fired"]:
                 st.write(f"- {r}")
-        
         if result.get("qc"):
             st.markdown(f"#### {t('acquisition_notes')}")
             for q in result["qc"]:
                 st.info(f"• {q}")
-
     # Recommendations
     with st.expander(t("clinical_recommendations")):
         if result.get("reco"):
             for rec in result["reco"]:
                 st.write(f"• {rec}")
-        
         # Additional context-specific recommendations
         if result["status"] == "High":
             st.write("• Consider correlation with NT-proBNP/BNP levels if available.")
             st.write("• Evaluate for signs and symptoms of heart failure.")
             if ctx["rhythm"] == "AF":
                 st.write("• In AF, consider rate control strategy to improve diastolic filling.")
-        
         if athlete and result["status"] in ["High", "PossibleHigh"]:
             st.write("• In athletes, consider exercise stress echocardiography to distinguish physiological from pathological adaptation.")
-
     # Parameter explanations
     with st.expander(t("parameter_explanations")):
         st.markdown(f"#### {t('why_matter')}")
@@ -1329,7 +1207,6 @@ elif st.session_state.current_step == 3:
         as no single measurement is perfectly accurate. The algorithm follows ASE/EACVI guidelines to integrate
         these parameters into a comprehensive assessment.
         """)
-        
         # Get measurements from session state
         used_params = []
         for key in st.session_state.keys():
@@ -1337,7 +1214,6 @@ elif st.session_state.current_step == 3:
                 param_name = key.replace('_input', '')
                 if param_name in PARAMETER_EXPLANATIONS:
                     used_params.append(param_name)
-        
         if used_params:
             st.markdown(f"##### {t('parameters_provided')}")
             for param in used_params:
@@ -1349,11 +1225,9 @@ elif st.session_state.current_step == 3:
                     st.markdown(f"**Pitfalls:** {exp['pitfalls']}")
         else:
             st.info("No parameters with explanations were provided.")
-
     # Export & report section
     st.markdown("---")
     st.markdown(f"#### {t('export_report')}")
-    
     # summary text
     now = datetime.utcnow().isoformat(timespec="seconds") + "Z"
     summary_lines = [
@@ -1366,41 +1240,32 @@ elif st.session_state.current_step == 3:
         "",
         "Reasoning:",
     ]
-    
     if result.get("reasoning"):
         for i, reason in enumerate(result["reasoning"], 1):
             summary_lines.append(f"{i}. {reason}")
-    
     summary_lines.extend([
         "",
         "Triggered rules: " + (", ".join(result.get("fired", [])) or "none"),
         "Recommendations:",
     ])
-    
     if result.get("reco"):
         for rec in result["reco"]:
             summary_lines.append(f"- {rec}")
-    
     summary_lines.extend([
         "",
         "Measurements provided:"
     ])
-    
     # Get measurements from session state
     for key in st.session_state.keys():
         if key.endswith('_input') and st.session_state[key] is not None:
             param_name = key.replace('_input', '')
             summary_lines.append(f"- {param_name}: {st.session_state[key]}")
-    
     summary_text = "\n".join(summary_lines)
-    
     # Create two columns for export buttons
     exp_col1, exp_col2 = st.columns(2)
-    
     with exp_col1:
         st.download_button(t("download_full"), data=summary_text, 
                           file_name="prvg_comprehensive_report.txt", mime="text/plain")
-    
     with exp_col2:
         # Create data for CSV export
         data_dict = {}
@@ -1408,7 +1273,6 @@ elif st.session_state.current_step == 3:
             if key.endswith('_input') and st.session_state[key] is not None:
                 param_name = key.replace('_input', '')
                 data_dict[param_name] = [st.session_state[key]]
-        
         # Add context information
         data_dict["Presentation"] = [presentation]
         data_dict["Age"] = [age]
@@ -1416,20 +1280,16 @@ elif st.session_state.current_step == 3:
         data_dict["Result"] = [result['status']]
         data_dict["Grade"] = [result.get('grade', 'NA')]
         data_dict["Confidence"] = [result.get('confidence', '')]
-        
         df = pd.DataFrame(data_dict)
         st.download_button(t("download_csv"), data=df.to_csv(index=False), 
                           file_name="prvg_data.csv", mime="text/csv")
-    
     st.text_area(t("report_summary"), value=summary_text, height=250)
-
     # Navigation buttons
     col_nav1, col_nav2 = st.columns([1, 5])
     with col_nav1:
         if st.button(t("prev_step")):
             st.session_state.current_step = 2
             st.rerun()
-
 # Footer
 st.markdown("---")
 st.markdown(f"""
@@ -1439,3 +1299,5 @@ st.markdown(f"""
 {t('based_on')}
 </div>
 """, unsafe_allow_html=True)
+
+```

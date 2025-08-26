@@ -1,4 +1,3 @@
-```python
 # app.py
 # Streamlit PRVG Assistant — Enhanced with clinical adaptation, UI/UX improvements, and educational features
 import streamlit as st
@@ -9,6 +8,7 @@ from datetime import datetime
 import base64
 from io import BytesIO
 st.set_page_config(page_title="PRVG Assistant", page_icon="🫀", layout="wide")
+
 # -----------------------
 # CSS Styling - Simplified
 # -----------------------
@@ -146,8 +146,14 @@ st.markdown("""
     margin-top: 0;
     margin-bottom: 8px;
 }
+.param-link {
+    color: #3b82f6;
+    text-decoration: underline;
+    cursor: pointer;
+}
 </style>
 """, unsafe_allow_html=True)
+
 # -----------------------
 # Internationalization (English and French only)
 # -----------------------
@@ -263,6 +269,7 @@ LANGUAGES = {
         "parameter_info_desc": "Cliquez sur le nom d'un paramètre pour voir les informations détaillées ci-dessous."
     }
 }
+
 # Initialize session state for wizard steps and language
 if 'current_step' not in st.session_state:
     st.session_state.current_step = 1
@@ -270,9 +277,11 @@ if 'language' not in st.session_state:
     st.session_state.language = "English"
 if 'selected_parameter' not in st.session_state:
     st.session_state.selected_parameter = None
+
 # Get current language strings
 def t(key):
     return LANGUAGES[st.session_state.language].get(key, key)
+
 # -----------------------
 # Profiles / thresholds with age and athlete adjustments
 # -----------------------
@@ -320,6 +329,7 @@ def get_profile(age, athlete=False):
         base_profile["E_e_septal_abn"] = 17.0  # Higher threshold for athletes
         base_profile["E_e_lateral_abn"] = 15.0  # Higher threshold for athletes
     return base_profile
+
 # -----------------------
 # Medical Knowledge Base with enhanced content
 # -----------------------
@@ -439,6 +449,7 @@ PARAMETER_EXPLANATIONS = {
         "pitfalls": "Technically challenging. Requires high frame rate imaging."
     }
 }
+
 # -----------------------
 # Example Cases
 # -----------------------
@@ -488,14 +499,17 @@ EXAMPLE_CASES = {
         "LAVi": 36.0
     }
 }
+
 # -----------------------
 # Utilities
 # -----------------------
 def nz(x): 
     return x is not None and (not (isinstance(x, float) and (x != x)))
+
 def safe_mean(*vals):
     vs = [v for v in vals if nz(v)]
     return sum(vs)/len(vs) if vs else None
+
 def compute_derived(meas):
     if nz(meas.get("E")) and nz(meas.get("A")) and meas.get("A") != 0:
         meas["EA"] = meas["E"]/meas["A"]
@@ -507,6 +521,7 @@ def compute_derived(meas):
         meas["pulm_SD"] = meas["PV_S"]/meas["PV_D"]
     if not nz(meas.get("E_over_Vp")) and nz(meas.get("E")) and nz(meas.get("Vp")) and meas.get("Vp") != 0:
         meas["E_over_Vp"] = meas["E"]/meas["Vp"]
+
 def qc_notes(meas, ctx):
     notes = []
     if ctx["rhythm"] == "AF" and (not nz(meas.get("cycles_averaged")) or meas.get("cycles_averaged") < 5):
@@ -527,29 +542,39 @@ def qc_notes(meas, ctx):
     if nz(meas.get("LAVi")) and meas.get("LAVi") > 50:
         notes.append("Severe LA enlargement present.")
     return notes
+
 # Atomic rule checks
 def rule_low_e_prime(meas, P):
     return (nz(meas.get("e_mean")) and meas["e_mean"] <= P["e_mean_low"]) or \
            (nz(meas.get("e_septal")) and meas["e_septal"] <= P["e_septal_low"]) or \
            (nz(meas.get("e_lateral")) and meas["e_lateral"] <= P["e_lateral_low"])
+
 def rule_Ee_high(meas, P):
     return (nz(meas.get("E_over_e_mean")) and meas["E_over_e_mean"] >= P["E_e_mean_abn"]) or \
            (nz(meas.get("E_over_e_septal")) and meas["E_over_e_septal"] >= P["E_e_septal_abn"]) or \
            (nz(meas.get("E_over_e_lateral")) and meas["E_over_e_lateral"] >= P["E_e_lateral_abn"])
+
 def rule_TR_high(meas, P): 
     return nz(meas.get("TR_vmax")) and meas["TR_vmax"] >= P["TR_vmax_abn"]
+
 def rule_LAVi_high(meas, P): 
     return nz(meas.get("LAVi")) and meas["LAVi"] >= P["LAVi_abn"]
+
 def rule_LARS_low(meas, P): 
     return nz(meas.get("LARS")) and meas["LARS"] <= P["LARS_low"]
+
 def rule_pv_SD_low(meas, P): 
     return nz(meas.get("pulm_SD")) and meas["pulm_SD"] <= P["pulm_SD_low"]
+
 def rule_IVRT_short(meas, P): 
     return nz(meas.get("IVRT")) and meas["IVRT"] <= P["IVRT_short_sinus"]
+
 def rule_restrictive_inflow(meas, P): 
     return nz(meas.get("EA")) and meas["EA"] >= P["E_A_restrictive"]
+
 def rule_low_EA(meas, P): 
     return nz(meas.get("EA")) and meas["EA"] <= P["E_A_low_cut"]
+
 def collect_surrogates(meas, P):
     tags = []
     if rule_Ee_high(meas, P): 
@@ -565,6 +590,7 @@ def collect_surrogates(meas, P):
     if rule_IVRT_short(meas, P): 
         tags.append("Short IVRT")
     return tags
+
 # Decision engine with comprehensive medical reasoning
 def evaluate_PRVG(meas, ctx, age, athlete):
     P = get_profile(age, athlete)
@@ -573,6 +599,7 @@ def evaluate_PRVG(meas, ctx, age, athlete):
     fired = []
     missing = []
     reasoning = []
+    
     # Check minimal requirements based on rhythm
     if ctx["rhythm"] == "AF":
         # AF-specific requirements
@@ -584,6 +611,7 @@ def evaluate_PRVG(meas, ctx, age, athlete):
         if not any([nz(meas.get("EA")), nz(meas.get("E_over_e_mean")), nz(meas.get("TR_vmax")), nz(meas.get("LAVi"))]):
             missing = ["E/A or E/e' or TR Vmax or LAVi"]
             reasoning.append("In sinus rhythm, at least one of E/A, E/e', TR Vmax, or LAVi is needed for assessment.")
+    
     # If missing critical parameters -> return indeterminate
     if missing:
         return {
@@ -598,28 +626,34 @@ def evaluate_PRVG(meas, ctx, age, athlete):
             "reco": ["Acquire missing core indices; consider LARS or natriuretic peptides if available."],
             "algorithm_flow": ["Missing critical parameters for assessment."]
         }
+    
     # Main decision logic
     # AF branch
     if ctx["rhythm"] == "AF":
         flags = []
         reasoning_af = []
         algorithm_flow = ["Atrial Fibrillation algorithm branch"]
+        
         if nz(meas.get("IVRT")) and meas["IVRT"] <= P["IVRT_short_AF"]:
             flags.append("Short IVRT (AF)")
             reasoning_af.append(f"IVRT of {meas['IVRT']} ms ≤ {P['IVRT_short_AF']} ms suggests elevated filling pressures in AF.")
             algorithm_flow.append(f"IVRT {meas['IVRT']} ms ≤ {P['IVRT_short_AF']} ms → abnormal")
+            
         if nz(meas.get("E_over_e_septal")) and meas["E_over_e_septal"] >= P["E_e_septal_abn"]:
             flags.append("E/e' septal high")
             reasoning_af.append(f"E/e' septal ratio of {meas['E_over_e_septal']} ≥ {P['E_e_septal_abn']} suggests elevated filling pressures.")
             algorithm_flow.append(f"E/e' septal {meas['E_over_e_septal']} ≥ {P['E_e_septal_abn']} → abnormal")
+            
         if rule_TR_high(meas, P): 
             flags.append("TR Vmax high")
             reasoning_af.append(f"TR Vmax of {meas['TR_vmax']} m/s ≥ {P['TR_vmax_abn']} m/s suggests pulmonary hypertension.")
             algorithm_flow.append(f"TR Vmax {meas['TR_vmax']} m/s ≥ {P['TR_vmax_abn']} m/s → abnormal")
+            
         if nz(meas.get("E_over_Vp")) and meas["E_over_Vp"] >= P["E_over_Vp_AF_abn"]:
             flags.append("E/Vp high")
             reasoning_af.append(f"E/Vp ratio of {meas['E_over_Vp']} ≥ {P['E_over_Vp_AF_abn']} suggests elevated filling pressures in AF.")
             algorithm_flow.append(f"E/Vp {meas['E_over_Vp']} ≥ {P['E_over_Vp_AF_abn']} → abnormal")
+            
         # Decision making for AF
         reasoning.extend(reasoning_af)
         if len(flags) >= 2:
@@ -637,6 +671,7 @@ def evaluate_PRVG(meas, ctx, age, athlete):
             confidence = "Low"
             narrative = "No AF-specific surrogate clearly abnormal. Consider additional parameters."
             algorithm_flow.append("No abnormal parameters → Indeterminate")
+            
         return {
             "status": status,
             "grade": "NA",
@@ -649,15 +684,18 @@ def evaluate_PRVG(meas, ctx, age, athlete):
             "reco": ["Average multiple beats; consider invasive measurement if clinical decisions depend on LAP."],
             "algorithm_flow": algorithm_flow
         }
+    
     # Sinus rhythm branch
     EA = meas.get("EA")
     surrogates = collect_surrogates(meas, P)
     reasoning_sr = []
     algorithm_flow = ["Sinus rhythm algorithm branch"]
+    
     # Low EA (impaired relaxation)
     if rule_low_EA(meas, P):
         reasoning_sr.append(f"E/A ratio of {EA} ≤ {P['E_A_low_cut']} indicates impaired relaxation (Grade I diastolic dysfunction).")
         algorithm_flow.append(f"E/A {EA} ≤ {P['E_A_low_cut']} → impaired relaxation")
+        
         if len(surrogates) >= 1:
             fired = ["E/A low"] + surrogates
             reasoning_sr.append(f"Abnormal surrogates ({', '.join(surrogates)}) suggest elevated LAP despite impaired relaxation pattern.")
@@ -688,10 +726,12 @@ def evaluate_PRVG(meas, ctx, age, athlete):
                 "reco": ["Follow clinical context."],
                 "algorithm_flow": algorithm_flow
             }
+    
     # Restrictive inflow
     if rule_restrictive_inflow(meas, P):
         reasoning_sr.append(f"E/A ratio of {EA} ≥ {P['E_A_restrictive']} indicates restrictive filling pattern (Grade III diastolic dysfunction).")
         algorithm_flow.append(f"E/A {EA} ≥ {P['E_A_restrictive']} → restrictive pattern")
+        
         # Apply athlete/young exception
         if athlete and age < 40:
             reasoning_sr.append("Athlete/young exception applied: restrictive pattern may be normal in highly trained individuals.")
@@ -704,6 +744,7 @@ def evaluate_PRVG(meas, ctx, age, athlete):
             reco = ["Confirm with LAVi/TR and consider invasive testing if discordant."]
             confidence = "High" if len(surrogates)>=1 else "Medium"
             algorithm_flow.append("Restrictive pattern confirmed → Grade III")
+            
         fired = ["E/A restrictive"] + surrogates
         reasoning_sr.extend([f"Surrogate(s) abnormal: {', '.join(surrogates)}"] if surrogates else ["No additional abnormal surrogates."])
         return {
@@ -718,10 +759,12 @@ def evaluate_PRVG(meas, ctx, age, athlete):
             "reco": reco,
             "algorithm_flow": algorithm_flow
         }
+    
     # Intermediate EA (pseudonormal)
     if EA and 0.8 < EA < P["E_A_restrictive"]:
         reasoning_sr.append(f"E/A ratio of {EA} suggests pseudonormal filling (Grade II diastolic dysfunction).")
         algorithm_flow.append(f"E/A {EA} → pseudonormal pattern")
+        
         if len(surrogates) >= 2:
             fired = surrogates
             reasoning_sr.append(f"Multiple abnormal surrogates ({', '.join(surrogates)}) strongly suggest elevated LAP.")
@@ -769,6 +812,7 @@ def evaluate_PRVG(meas, ctx, age, athlete):
                 "reco": ["If symptoms persist, perform stress diastolic testing."],
                 "algorithm_flow": algorithm_flow
             }
+    
     # Fallback safety net
     reasoning_sr.append("Could not classify with confidence — data borderline or conflicting.")
     algorithm_flow.append("Data borderline or conflicting → indeterminate")
@@ -784,6 +828,7 @@ def evaluate_PRVG(meas, ctx, age, athlete):
         "reco": ["Obtain additional indices: LARS, PV flow, TR, or consider invasive hemodynamics."],
         "algorithm_flow": algorithm_flow
     }
+
 # -----------------------
 # UI Implementation
 # -----------------------
@@ -792,6 +837,7 @@ with st.sidebar:
     st.session_state.language = st.selectbox("Language", list(LANGUAGES.keys()), index=0)
     # Voice input placeholder
     st.write(f"🔊 {t('voice_input')} (Coming soon)")
+    
     # Example cases
     st.markdown("---")
     st.subheader(t("try_example"))
@@ -816,6 +862,7 @@ with st.sidebar:
             st.session_state.rhythm_af = False
         st.success(f"Loaded {example_case} example")
         st.rerun()
+    
     # References
     st.markdown("---")
     st.subheader(t("references"))
@@ -823,6 +870,7 @@ with st.sidebar:
     - Nagueh SF et al. Recommendations for the Evaluation of Left Ventricular Diastolic Function by Echocardiography. JASE 2016.
     - Lancellotti P et al. EACVI recommendations for the assessment of left ventricular filling pressure. Eur Heart J Cardiovasc Imaging 2024.
     """)
+
 # Wizard navigation
 st.markdown(f"""
 <div class='card'>
@@ -830,6 +878,7 @@ st.markdown(f"""
     <div class='small-muted'>{t('disclaimer')}</div>
 </div>
 """, unsafe_allow_html=True)
+
 # Wizard steps
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -841,6 +890,7 @@ with col2:
 with col3:
     step3_class = "wizard-step active" if st.session_state.current_step == 3 else "wizard-step"
     st.markdown(f'<div class="{step3_class}"><h4>{t("step3_title")}</h4></div>', unsafe_allow_html=True)
+
 # Initialize session state variables if they don't exist
 if 'age' not in st.session_state:
     st.session_state.age = 65
@@ -858,6 +908,7 @@ if 'bradycardia' not in st.session_state:
     st.session_state.bradycardia = False
 if 'poor_window' not in st.session_state:
     st.session_state.poor_window = False
+
 # Step 1: Patient Information
 if st.session_state.current_step == 1:
     st.markdown(f"### {t('step1_title')}")
@@ -895,6 +946,7 @@ if st.session_state.current_step == 1:
             poor_window = st.checkbox(t("poor_window"), value=st.session_state.poor_window, 
                                      help="Consider LARS or contrast enhancement",
                                      key="poor_window_check")
+    
     # Navigation buttons
     col_nav1, col_nav2 = st.columns([1, 5])
     with col_nav1:
@@ -910,6 +962,7 @@ if st.session_state.current_step == 1:
             st.session_state.poor_window = poor_window
             st.session_state.current_step = 2
             st.rerun()
+
 # Step 2: Key Parameters
 elif st.session_state.current_step == 2:
     st.markdown(f"### {t('step2_title')}")
@@ -923,6 +976,7 @@ elif st.session_state.current_step == 2:
     poor_window = st.session_state.poor_window
     age = st.session_state.age
     athlete = True if presentation == "Athlete / Young" else False
+    
     # Determine minimal fields based on presentation
     def minimal_fields(pres, rhythm):
         if pres == "Athlete / Young":
@@ -937,103 +991,93 @@ elif st.session_state.current_step == 2:
             return ["E_over_e_mean", "TR_vmax", "LAVi"]
         # Default
         return ["E", "A", "one_e_prime", "TR_vmax", "LAVi"]
+    
     core = minimal_fields(presentation, rhythm)
+    
     # Show required fields
     st.markdown(f"**{t('required_fields')}** {', '.join(core)}")
+    
     # Inputs area
     st.markdown(f"### {t('measurements')}")
     st.caption(t("minimal_mode_desc"))
+    
     # Create input sections
     cols = st.columns(3)
+    
     def show_if(name):
         return (not minimal_mode) or (name in core)
-    # Helper function to create parameter buttons
-    def param_button(param_key, label):
-        if st.button(label, key=f"btn_{param_key}"):
-            st.session_state.selected_parameter = param_key
-        return st.session_state.selected_parameter == param_key
     
+    # Helper function to create clickable parameter labels
+    def param_label(param_key, label):
+        return f"<span class='param-link' onclick='window.streamlitSessionState.set({{selected_parameter: \"{param_key}\"}});'>{label}</span>"
+
     with cols[0]:
         st.markdown(f"#### {t('mitral_inflow')}")
         # Initialize session state for inputs if not exists
         if 'E_input' not in st.session_state:
-            st.session_state.E_input = 0.0 if show_if("E") else None
+            st.session_state.E_input = None
         if 'A_input' not in st.session_state:
-            st.session_state.A_input = 0.0 if show_if("A") else None
+            st.session_state.A_input = None
         if 'EA_input' not in st.session_state:
-            st.session_state.EA_input = 0.0 if show_if("EA") else None
+            st.session_state.EA_input = None
             
-        # Use 0.0 as default value if field should be shown, otherwise None
-        E_default = float(st.session_state.E_input) if st.session_state.E_input is not None else 0.0
-        A_default = float(st.session_state.A_input) if st.session_state.A_input is not None else 0.0
-        EA_default = float(st.session_state.EA_input) if st.session_state.EA_input is not None else 0.0
-        
         E = st.number_input("E (cm/s)", min_value=0.0, step=0.1, format="%.1f", 
-                           disabled=not show_if("E"), key="E_input", value=E_default if show_if("E") else 0.0)
+                           disabled=not show_if("E"), key="E_input", value=float(st.session_state.E_input) if st.session_state.E_input is not None else 0.0)
         A = st.number_input("A (cm/s)", min_value=0.0, step=0.1, format="%.1f", 
-                           disabled=not show_if("A"), key="A_input", value=A_default if show_if("A") else 0.0)
+                           disabled=not show_if("A"), key="A_input", value=float(st.session_state.A_input) if st.session_state.A_input is not None else 0.0)
         EA = st.number_input("E/A ratio (if pre-calculated)", min_value=0.0, step=0.1, format="%.2f", 
-                            disabled=not show_if("EA"), key="EA_input", value=EA_default if show_if("EA") else 0.0)
+                            disabled=not show_if("EA"), key="EA_input", value=float(st.session_state.EA_input) if st.session_state.EA_input is not None else 0.0)
+    
     with cols[1]:
         st.markdown(f"#### {t('tissue_doppler')}")
         # Initialize session state for inputs if not exists
         if 'e_septal_input' not in st.session_state:
-            st.session_state.e_septal_input = 0.0 if (show_if("e_septal") or show_if("one_e_prime")) else None
+            st.session_state.e_septal_input = None
         if 'e_lateral_input' not in st.session_state:
-            st.session_state.e_lateral_input = 0.0 if (show_if("e_lateral") or show_if("one_e_prime")) else None
+            st.session_state.e_lateral_input = None
         if 'E_over_e_septal_input' not in st.session_state:
-            st.session_state.E_over_e_septal_input = 0.0 if show_if("E_over_e_septal") else None
+            st.session_state.E_over_e_septal_input = None
         if 'E_over_e_lateral_input' not in st.session_state:
-            st.session_state.E_over_e_lateral_input = 0.0 if show_if("E_over_e_lateral") else None
+            st.session_state.E_over_e_lateral_input = None
         if 'E_over_e_mean_input' not in st.session_state:
-            st.session_state.E_over_e_mean_input = 0.0 if show_if("E_over_e_mean") else None
+            st.session_state.E_over_e_mean_input = None
             
-        # Use 0.0 as default value if field should be shown, otherwise None
-        e_septal_default = float(st.session_state.e_septal_input) if st.session_state.e_septal_input is not None else 0.0
-        e_lateral_default = float(st.session_state.e_lateral_input) if st.session_state.e_lateral_input is not None else 0.0
-        E_over_e_septal_default = float(st.session_state.E_over_e_septal_input) if st.session_state.E_over_e_septal_input is not None else 0.0
-        E_over_e_lateral_default = float(st.session_state.E_over_e_lateral_input) if st.session_state.E_over_e_lateral_input is not None else 0.0
-        E_over_e_mean_default = float(st.session_state.E_over_e_mean_input) if st.session_state.E_over_e_mean_input is not None else 0.0
-        
         e_sept = st.number_input("e' septal (cm/s)", min_value=0.0, step=0.1, format="%.1f", 
                                 disabled=not (show_if("e_septal") or show_if("one_e_prime")), key="e_septal_input", 
-                                value=e_septal_default if (show_if("e_septal") or show_if("one_e_prime")) else 0.0)
+                                value=float(st.session_state.e_septal_input) if st.session_state.e_septal_input is not None else 0.0)
         e_lat = st.number_input("e' lateral (cm/s)", min_value=0.0, step=0.1, format="%.1f", 
                                disabled=not (show_if("e_lateral") or show_if("one_e_prime")), key="e_lateral_input", 
-                               value=e_lateral_default if (show_if("e_lateral") or show_if("one_e_prime")) else 0.0)
+                               value=float(st.session_state.e_lateral_input) if st.session_state.e_lateral_input is not None else 0.0)
         E_over_e_sept = st.number_input("E/e' septal", min_value=0.0, step=0.1, format="%.1f", 
                                        disabled=not show_if("E_over_e_septal"), key="E_over_e_septal_input", 
-                                       value=E_over_e_septal_default if show_if("E_over_e_septal") else 0.0)
+                                       value=float(st.session_state.E_over_e_septal_input) if st.session_state.E_over_e_septal_input is not None else 0.0)
         E_over_e_lat = st.number_input("E/e' lateral", min_value=0.0, step=0.1, format="%.1f", 
                                       disabled=not show_if("E_over_e_lateral"), key="E_over_e_lateral_input", 
-                                      value=E_over_e_lateral_default if show_if("E_over_e_lateral") else 0.0)
+                                      value=float(st.session_state.E_over_e_lateral_input) if st.session_state.E_over_e_lateral_input is not None else 0.0)
         E_over_e_mean = st.number_input("E/e' mean", min_value=0.0, step=0.1, format="%.1f", 
                                        disabled=not show_if("E_over_e_mean"), key="E_over_e_mean_input", 
-                                       value=E_over_e_mean_default if show_if("E_over_e_mean") else 0.0)
+                                       value=float(st.session_state.E_over_e_mean_input) if st.session_state.E_over_e_mean_input is not None else 0.0)
+    
     with cols[2]:
         st.markdown(f"#### {t('other_params')}")
         # Initialize session state for inputs if not exists
         if 'TR_vmax_input' not in st.session_state:
-            st.session_state.TR_vmax_input = 0.0 if show_if("TR_vmax") else None
+            st.session_state.TR_vmax_input = None
         if 'LAVi_input' not in st.session_state:
-            st.session_state.LAVi_input = 0.0 if show_if("LAVi") else None
+            st.session_state.LAVi_input = None
         if 'LARS_input' not in st.session_state:
-            st.session_state.LARS_input = 0.0 if show_if("LARS") else None
+            st.session_state.LARS_input = None
             
-        # Use 0.0 as default value if field should be shown, otherwise None
-        TR_vmax_default = float(st.session_state.TR_vmax_input) if st.session_state.TR_vmax_input is not None else 0.0
-        LAVi_default = float(st.session_state.LAVi_input) if st.session_state.LAVi_input is not None else 0.0
-        LARS_default = float(st.session_state.LARS_input) if st.session_state.LARS_input is not None else 0.0
-        
         TR_vmax = st.number_input("TR Vmax (m/s)", min_value=0.0, step=0.01, format="%.2f", 
                                  disabled=not show_if("TR_vmax"), key="TR_vmax_input", 
-                                 value=TR_vmax_default if show_if("TR_vmax") else 0.0)
+                                 value=float(st.session_state.TR_vmax_input) if st.session_state.TR_vmax_input is not None else 0.0)
         LAVi = st.number_input("LAVi (mL/m²)", min_value=0.0, step=0.1, format="%.1f", 
                               disabled=not show_if("LAVi"), key="LAVi_input", 
-                              value=LAVi_default if show_if("LAVi") else 0.0)
+                              value=float(st.session_state.LAVi_input) if st.session_state.LAVi_input is not None else 0.0)
         LARS = st.number_input("LA reservoir strain (LARS %)", min_value=0.0, step=0.1, format="%.1f", 
                               disabled=not show_if("LARS"), key="LARS_input", 
-                              value=LARS_default if show_if("LARS") else 0.0)
+                              value=float(st.session_state.LARS_input) if st.session_state.LARS_input is not None else 0.0)
+    
     # Advanced parameters
     with st.expander(t("advanced_params")):
         adv_cols = st.columns(2)
@@ -1041,83 +1085,68 @@ elif st.session_state.current_step == 2:
             st.markdown(f"#### {t('pulmonary_vein')}")
             # Initialize session state for inputs if not exists
             if 'PV_S_input' not in st.session_state:
-                st.session_state.PV_S_input = 0
+                st.session_state.PV_S_input = None
             if 'PV_D_input' not in st.session_state:
-                st.session_state.PV_D_input = 0
+                st.session_state.PV_D_input = None
             if 'Ar_minus_A_input' not in st.session_state:
-                st.session_state.Ar_minus_A_input = 0
+                st.session_state.Ar_minus_A_input = None
                 
-            # Use 0 as default value
-            PV_S_default = int(st.session_state.PV_S_input) if st.session_state.PV_S_input is not None else 0
-            PV_D_default = int(st.session_state.PV_D_input) if st.session_state.PV_D_input is not None else 0
-            Ar_minus_A_default = int(st.session_state.Ar_minus_A_input) if st.session_state.Ar_minus_A_input is not None else 0
-            
             PV_S = st.number_input("PV S (cm/s)", min_value=0.0, step=0.1, format="%.1f", 
-                                  key="PV_S_input", value=float(PV_S_default))
+                                  key="PV_S_input", value=float(st.session_state.PV_S_input) if st.session_state.PV_S_input is not None else 0.0)
             PV_D = st.number_input("PV D (cm/s)", min_value=0.0, step=0.1, format="%.1f", 
-                                  key="PV_D_input", value=float(PV_D_default))
+                                  key="PV_D_input", value=float(st.session_state.PV_D_input) if st.session_state.PV_D_input is not None else 0.0)
             Ar_minus_A = st.number_input("PV Ar - MV A (ms)", min_value=0, step=1, format="%d",
                                         disabled=not show_if("Ar_minus_A"), key="Ar_minus_A_input", 
-                                        value=Ar_minus_A_default if show_if("Ar_minus_A") else 0)
+                                        value=int(st.session_state.Ar_minus_A_input) if st.session_state.Ar_minus_A_input is not None else 0)
         with adv_cols[1]:
             st.markdown(f"#### {t('other_advanced')}")
             # Initialize session state for inputs if not exists
             if 'IVRT_input' not in st.session_state:
-                st.session_state.IVRT_input = 0
+                st.session_state.IVRT_input = None
             if 'DT_input' not in st.session_state:
-                st.session_state.DT_input = 0
+                st.session_state.DT_input = None
             if 'EDV_input' not in st.session_state:
-                st.session_state.EDV_input = 0.0
+                st.session_state.EDV_input = None
             if 'Vp_input' not in st.session_state:
-                st.session_state.Vp_input = 0.0
+                st.session_state.Vp_input = None
             if 'E_over_Vp_input' not in st.session_state:
-                st.session_state.E_over_Vp_input = 0.0
+                st.session_state.E_over_Vp_input = None
             if 'TE_minus_e_input' not in st.session_state:
-                st.session_state.TE_minus_e_input = 0
+                st.session_state.TE_minus_e_input = None
                 
-            # Use 0 as default value for integers, 0.0 for floats
-            IVRT_default = int(st.session_state.IVRT_input) if st.session_state.IVRT_input is not None else 0
-            DT_default = int(st.session_state.DT_input) if st.session_state.DT_input is not None else 0
-            EDV_default = float(st.session_state.EDV_input) if st.session_state.EDV_input is not None else 0.0
-            Vp_default = float(st.session_state.Vp_input) if st.session_state.Vp_input is not None else 0.0
-            E_over_Vp_default = float(st.session_state.E_over_Vp_input) if st.session_state.E_over_Vp_input is not None else 0.0
-            TEe_default = int(st.session_state.TE_minus_e_input) if st.session_state.TE_minus_e_input is not None else 0
-            
             IVRT = st.number_input("IVRT (ms)", min_value=0, step=1, format="%d",
-                                  key="IVRT_input", value=IVRT_default)
+                                  key="IVRT_input", value=int(st.session_state.IVRT_input) if st.session_state.IVRT_input is not None else 0)
             DT = st.number_input("DT (ms)", min_value=0, step=1, format="%d",
-                                key="DT_input", value=DT_default)
+                                key="DT_input", value=int(st.session_state.DT_input) if st.session_state.DT_input is not None else 0)
             EDV = st.number_input("PV EDV (cm/s)", min_value=0.0, step=0.1, format="%.1f", 
-                                 key="EDV_input", value=EDV_default)
+                                 key="EDV_input", value=float(st.session_state.EDV_input) if st.session_state.EDV_input is not None else 0.0)
             Vp = st.number_input("Vp (cm/s)", min_value=0.0, step=0.1, format="%.1f", 
-                                key="Vp_input", value=Vp_default)
+                                key="Vp_input", value=float(st.session_state.Vp_input) if st.session_state.Vp_input is not None else 0.0)
             E_over_Vp = st.number_input("E/Vp", min_value=0.0, step=0.1, format="%.1f", 
-                                       key="E_over_Vp_input", value=E_over_Vp_default)
+                                       key="E_over_Vp_input", value=float(st.session_state.E_over_Vp_input) if st.session_state.E_over_Vp_input is not None else 0.0)
             TEe = st.number_input("TE - e' (ms)", min_value=0, step=1, format="%d",
-                                 key="TE_minus_e_input", value=TEe_default)
+                                 key="TE_minus_e_input", value=int(st.session_state.TE_minus_e_input) if st.session_state.TE_minus_e_input is not None else 0)
         st.markdown(f"#### {t('contextual_params')}")
         ctx_cols = st.columns(3)
         with ctx_cols[0]:
             # Initialize session state for inputs if not exists
             if 'cycles_input' not in st.session_state:
-                st.session_state.cycles_input = 0
-            cycles_default = int(st.session_state.cycles_input) if st.session_state.cycles_input is not None else 0
+                st.session_state.cycles_input = None
             cycles = st.number_input("Averaged cycles (AF)", min_value=0, step=1, format="%d", 
-                                    key="cycles_input", value=cycles_default)
+                                    key="cycles_input", value=int(st.session_state.cycles_input) if st.session_state.cycles_input is not None else 0)
         with ctx_cols[1]:
             # Initialize session state for inputs if not exists
             if 'HR_input' not in st.session_state:
-                st.session_state.HR_input = 0
-            HR_default = int(st.session_state.HR_input) if st.session_state.HR_input is not None else 0
+                st.session_state.HR_input = None
             HR = st.number_input("HR (bpm)", min_value=0, step=1, format="%d", 
-                                key="HR_input", value=HR_default)
+                                key="HR_input", value=int(st.session_state.HR_input) if st.session_state.HR_input is not None else 0)
         with ctx_cols[2]:
             # Initialize session state for inputs if not exists
             if 'LVEF_input' not in st.session_state:
-                st.session_state.LVEF_input = 0
-            LVEF_default = int(st.session_state.LVEF_input) if st.session_state.LVEF_input is not None else 0
+                st.session_state.LVEF_input = None
             LVEF = st.number_input("LVEF (%)", min_value=0, max_value=100, step=1, format="%d", 
-                                  key="LVEF_input", value=LVEF_default)
+                                  key="LVEF_input", value=int(st.session_state.LVEF_input) if st.session_state.LVEF_input is not None else 0)
+    
     # Measurement dictionary
     meas = {
         "E": E or None, "A": A or None, "EA": EA or None,
@@ -1130,12 +1159,14 @@ elif st.session_state.current_step == 2:
         "Vp": Vp or None, "E_over_Vp": E_over_Vp or None, "DT": DT or None, 
         "HR": HR or None, "cycles_averaged": cycles or None, "LVEF": LVEF or None
     }
+    
     ctx = {
         "rhythm": "AF" if rhythm == "AF" else "sinus", 
         "tachycardia": tachycardia, 
         "bradycardia": bradycardia, 
         "poor_acoustic_window": poor_window
     }
+    
     # Check for minimal required fields
     def needed_for_minimal(core_fields, m):
         needed = []
@@ -1160,13 +1191,16 @@ elif st.session_state.current_step == 2:
                 if not nz(m.get(f)):
                     needed.append(mapping.get(f, f))
         return needed
+    
     needed = needed_for_minimal(core, meas)
+    
     # Evaluate or wait
     if auto_eval and len(needed) == 0:
         result = evaluate_PRVG(meas, ctx, age, athlete)
         st.session_state.result = result
     else:
         result = None
+    
     # Show evaluate controls
     colA, colB, colC = st.columns([2, 1, 1])
     with colA:
@@ -1186,6 +1220,7 @@ elif st.session_state.current_step == 2:
     with colC:
         st.write("")
         st.caption(f"{t('auto_eval_status')} " + ("enabled" if auto_eval else "disabled"))
+    
     # If auto-eval not ready show info
     if auto_eval and result is None:
         st.info(f"{t('auto_eval_status')} waits for minimal fields: " + ", ".join(needed))
@@ -1194,6 +1229,16 @@ elif st.session_state.current_step == 2:
     st.markdown("---")
     st.markdown(f"#### {t('parameter_info_title')}")
     st.caption(t("parameter_info_desc"))
+    
+    # Parameter selector dropdown
+    param_options = {k: v["name"] for k, v in PARAMETER_EXPLANATIONS.items()}
+    selected_param = st.selectbox(
+        "Select parameter to view details",
+        options=list(param_options.keys()),
+        format_func=lambda x: param_options[x],
+        key="param_select"
+    )
+    st.session_state.selected_parameter = selected_param
     
     # Display information for the selected parameter
     if st.session_state.selected_parameter and st.session_state.selected_parameter in PARAMETER_EXPLANATIONS:
@@ -1208,6 +1253,7 @@ elif st.session_state.current_step == 2:
         """, unsafe_allow_html=True)
     else:
         st.info("Select a parameter above to see detailed information.")
+    
     # Navigation buttons
     col_nav1, col_nav2, col_nav3 = st.columns([1, 1, 4])
     with col_nav1:
@@ -1218,6 +1264,7 @@ elif st.session_state.current_step == 2:
         if st.button(t("next_step")) and result is not None:
             st.session_state.current_step = 3
             st.rerun()
+
 # Step 3: Results & Export
 elif st.session_state.current_step == 3:
     st.markdown(f"### {t('step3_title')}")
@@ -1227,12 +1274,14 @@ elif st.session_state.current_step == 3:
             st.session_state.current_step = 2
             st.rerun()
         st.stop()
+    
     # Use values from session state
     presentation = st.session_state.presentation
     rhythm = st.session_state.rhythm
     age = st.session_state.age
     athlete = True if presentation == "Athlete / Young" else False
     result = st.session_state.result
+    
     # Create ctx dictionary for this step
     ctx = {
         "rhythm": "AF" if rhythm == "AF" else "sinus",
@@ -1240,6 +1289,7 @@ elif st.session_state.current_step == 3:
         "bradycardia": st.session_state.bradycardia,
         "poor_acoustic_window": st.session_state.poor_window
     }
+    
     # Color card
     status = result["status"]
     if status == "High":
@@ -1254,29 +1304,34 @@ elif st.session_state.current_step == 3:
     else:
         cls = "status-indet"
         status_text = "⚪ Indeterminate"
+    
     st.markdown(f"""
     <div class='result-card {cls}'>
         <h3 style='margin:4px'>{status_text} of Elevated Filling Pressures</h3>
         <div style='font-size:15px'>{result.get('narrative','')}</div>
     </div>
     """, unsafe_allow_html=True)
+    
     # Metrics tiles
     t1, t2, t3, t4 = st.columns(4)
     t1.metric("Diastolic Grade", result.get("grade", "NA"))
     t2.metric("Confidence", result.get("confidence", ""))
     t3.metric("Triggered Rules", str(len(result.get("fired", []))))
     t4.metric("Missing Params", str(len(result.get("missing", []))))
+    
     # Algorithm flow visualization
     with st.expander(t("algorithm_flow"), expanded=True):
         st.markdown("#### Algorithm Decision Path")
         for i, step in enumerate(result.get("algorithm_flow", [])):
             step_class = "flow-step abnormal" if "abnormal" in step else "flow-step normal" if "normal" in step else "flow-step"
             st.markdown(f'<div class="{step_class}">{i+1}. {step}</div>', unsafe_allow_html=True)
+    
     # Pitfall alerts
     if result.get("qc"):
         with st.expander(t("pitfall_alerts"), expanded=True):
             for q in result["qc"]:
                 st.markdown(f'<div class="pitfall-alert">⚠️ {q}</div>', unsafe_allow_html=True)
+    
     # Detailed reasoning
     with st.expander(t("detailed_reasoning"), expanded=True):
         if result.get("reasoning"):
@@ -1291,6 +1346,7 @@ elif st.session_state.current_step == 3:
             st.markdown(f"#### {t('acquisition_notes')}")
             for q in result["qc"]:
                 st.info(f"• {q}")
+    
     # Recommendations
     with st.expander(t("clinical_recommendations")):
         if result.get("reco"):
@@ -1304,6 +1360,7 @@ elif st.session_state.current_step == 3:
                 st.write("• In AF, consider rate control strategy to improve diastolic filling.")
         if athlete and result["status"] in ["High", "PossibleHigh"]:
             st.write("• In athletes, consider exercise stress echocardiography to distinguish physiological from pathological adaptation.")
+    
     # Parameter explanations
     with st.expander(t("parameter_explanations")):
         st.markdown(f"#### {t('why_matter')}")
@@ -1319,6 +1376,7 @@ elif st.session_state.current_step == 3:
                 param_name = key.replace('_input', '')
                 if param_name in PARAMETER_EXPLANATIONS:
                     used_params.append(param_name)
+        
         if used_params:
             st.markdown(f"##### {t('parameters_provided')}")
             for param in used_params:
@@ -1330,9 +1388,11 @@ elif st.session_state.current_step == 3:
                     st.markdown(f"**Pitfalls:** {exp['pitfalls']}")
         else:
             st.info("No parameters with explanations were provided.")
+    
     # Export & report section
     st.markdown("---")
     st.markdown(f"#### {t('export_report')}")
+    
     # summary text
     now = datetime.utcnow().isoformat(timespec="seconds") + "Z"
     summary_lines = [
@@ -1348,6 +1408,7 @@ elif st.session_state.current_step == 3:
     if result.get("reasoning"):
         for i, reason in enumerate(result["reasoning"], 1):
             summary_lines.append(f"{i}. {reason}")
+    
     summary_lines.extend([
         "",
         "Triggered rules: " + (", ".join(result.get("fired", [])) or "none"),
@@ -1356,6 +1417,7 @@ elif st.session_state.current_step == 3:
     if result.get("reco"):
         for rec in result["reco"]:
             summary_lines.append(f"- {rec}")
+    
     summary_lines.extend([
         "",
         "Measurements provided:"
@@ -1365,7 +1427,9 @@ elif st.session_state.current_step == 3:
         if key.endswith('_input') and st.session_state[key] is not None and st.session_state[key] != 0:
             param_name = key.replace('_input', '')
             summary_lines.append(f"- {param_name}: {st.session_state[key]}")
+    
     summary_text = "\n".join(summary_lines)
+    
     # Create two columns for export buttons
     exp_col1, exp_col2 = st.columns(2)
     with exp_col1:
@@ -1388,13 +1452,16 @@ elif st.session_state.current_step == 3:
         df = pd.DataFrame(data_dict)
         st.download_button(t("download_csv"), data=df.to_csv(index=False), 
                           file_name="prvg_data.csv", mime="text/csv")
+    
     st.text_area(t("report_summary"), value=summary_text, height=250)
+    
     # Navigation buttons
     col_nav1, col_nav2 = st.columns([1, 5])
     with col_nav1:
         if st.button(t("prev_step")):
             st.session_state.current_step = 2
             st.rerun()
+
 # Footer
 st.markdown("---")
 st.markdown(f"""
@@ -1404,4 +1471,13 @@ st.markdown(f"""
 {t('based_on')}
 </div>
 """, unsafe_allow_html=True)
-```
+
+# Add JavaScript for parameter selection
+st.markdown("""
+<script>
+// Function to handle parameter selection
+function selectParameter(param) {
+    window.streamlitSessionState.set({selected_parameter: param});
+}
+</script>
+""", unsafe_allow_html=True)

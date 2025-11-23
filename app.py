@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 
 # Configuration de la page
 st.set_page_config(
@@ -85,6 +86,14 @@ st.markdown("""
         border-radius: 3px;
         margin: 0.2rem 0;
     }
+    .critical-param {
+        color: #856404;
+        background-color: #ffcccc;
+        padding: 0.5rem;
+        border-radius: 3px;
+        margin: 0.2rem 0;
+        border-left: 4px solid #ff0000;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -151,175 +160,6 @@ situations_prvg = {
         """,
         "references": "ASE Guidelines for Diastolic Function 2016",
         "filling_pressure_possible": "Oui - Très bien validé"
-    },
-    
-    "Fibrillation auriculaire": {
-        "valid_parameters": {
-            "E/e' moyen": {"type": "number", "min": 5.0, "max": 25.0, "default": 12.0, "step": 0.1},
-            "Volume auriculaire gauche indexé": {"type": "number", "min": 15, "max": 60, "default": 45, "step": 1},
-            "Vitesse onde TR maximale": {"type": "number", "min": 1.5, "max": 4.5, "default": 2.9, "step": 0.1}
-        },
-        "additional_parameters": {
-            "PAP systolique": {"type": "number", "min": 15, "max": 100, "default": 45, "step": 1},
-            "Diamètre VG télédiastolique": {"type": "number", "min": 35, "max": 70, "default": 52, "step": 1}
-        },
-        "invalid_parameters": [
-            "Rapport E/A - Non valide (variabilité cycle-cycle)",
-            "Temps de décélération - Non valide (variabilité cycle-cycle)"
-        ],
-        "recommendation": """
-        **Recommandations FA (ASE 2016, EACVI 2017):**
-        
-        **Paramètres VALIDES:**
-        - E/e' moyen > 11 → PRVG élevée (spécificité 85%)
-        - Volume OG indexé > 34 ml/m²
-        - Vitesse TR > 2.8 m/s
-        
-        **Technique:**
-        - Moyenne sur 5-10 cycles cardiaques
-        - Éviter les cycles avec intervalles R-R extrêmes
-        - Indexation des volumes à la surface corporelle
-        """,
-        "references": "ASE 2016, EACVI Consensus 2017",
-        "filling_pressure_possible": "Oui - Avec limitations"
-    },
-    
-    "Sténose mitrale": {
-        "valid_parameters": {
-            "Pression artérielle pulmonaire systolique": {"type": "number", "min": 15, "max": 100, "default": 50, "step": 1},
-            "Volume auriculaire gauche indexé": {"type": "number", "min": 15, "max": 80, "default": 55, "step": 1},
-            "Fonction ventriculaire droite": {"type": "select", "options": ["Normale", "Légèrement altérée", "Modérément altérée", "Sévèrement altérée"]}
-        },
-        "additional_parameters": {
-            "Gradient moyen mitral": {"type": "number", "min": 2, "max": 40, "default": 12, "step": 1},
-            "Surface mitrale (planimétrie)": {"type": "number", "min": 0.5, "max": 4.0, "default": 1.3, "step": 0.1}
-        },
-        "invalid_parameters": [
-            "E/e' - NON VALIDE (gradient mitral modifie les vitesses)",
-            "Rapport E/A - NON VALIDE (dépend de la sténose)",
-            "Doppler tissulaire mitral - NON VALIDE"
-        ],
-        "recommendation": """
-        **Évaluation PRVG dans la sténose mitrale (ESC 2021):**
-        
-        **LIMITATIONS IMPORTANTES:**
-        - Les paramètres conventionnels de PRVG ne sont PAS VALIDES
-        - La pression capillaire est élevée par mécanisme obstructif
-        
-        **Paramètres INDIRECTS de retentissement:**
-        - PAP systolique > 50 mmHg → Retentissement significatif
-        - Dilatation OG sévère (Volume > 60 ml/m²)
-        - Altération fonction VD
-        - Augmentation des pressions droites
-        
-        **Gold standard:** Cathétérisme gauche pour pression capillaire
-        """,
-        "references": "ESC Guidelines 2021, ASE 2017",
-        "filling_pressure_possible": "NON - Méthodes conventionnelles non valides"
-    },
-    
-    "Régurgitation mitrale sévère": {
-        "valid_parameters": {
-            "Volume auriculaire gauche indexé": {"type": "number", "min": 15, "max": 80, "default": 48, "step": 1},
-            "Pression artérielle pulmonaire systolique": {"type": "number", "min": 15, "max": 100, "default": 42, "step": 1},
-            "Fonction ventriculaire droite": {"type": "select", "options": ["Normale", "Légèrement altérée", "Modérément altérée", "Sévèrement altérée"]}
-        },
-        "additional_parameters": {
-            "Volume régurgitant": {"type": "number", "min": 10, "max": 150, "default": 65, "step": 5},
-            "Fraction de régurgitation": {"type": "number", "min": 10, "max": 80, "default": 45, "step": 1}
-        },
-        "invalid_parameters": [
-            "E/e' - PRÉCAUTION (surestimation possible)",
-            "Rapport E/A - Interprétation difficile"
-        ],
-        "recommendation": """
-        **Évaluation PRVG dans la régurgitation mitrale (ASE 2017, ESC 2021):**
-        
-        **LIMITATIONS:**
-        - E/e' peut SURESTIMER la PRVG réelle
-        - Volume OG est le paramètre le plus fiable
-        
-        **Paramètres de décision chirurgicale:**
-        - Volume OG > 60 ml/m² → Indication opératoire
-        - PAP systolique > 50 mmHg → Retentissement
-        - FEVG < 60% → Altération fonctionnelle
-        - Fonction VD altérée → Pronostic péjoratif
-        
-        **Interprétation:**
-        - Volume OG > 40 ml/m² suggère élévation chronique des pressions
-        """,
-        "references": "ASE 2017, ESC Guidelines 2021",
-        "filling_pressure_possible": "Oui - Avec précautions d'interprétation"
-    },
-    
-    "Prothèse valvulaire mitrale": {
-        "valid_parameters": {
-            "Volume auriculaire gauche indexé": {"type": "number", "min": 15, "max": 60, "default": 35, "step": 1},
-            "Pression artérielle pulmonaire systolique": {"type": "number", "min": 15, "max": 100, "default": 38, "step": 1},
-            "Gradient moyen prothèse": {"type": "number", "min": 2.0, "max": 15.0, "default": 6.0, "step": 0.5}
-        },
-        "additional_parameters": {
-            "Index de performance prothèse (DVI)": {"type": "number", "min": 1.0, "max": 3.5, "default": 2.2, "step": 0.1},
-            "Temps de pression-demi": {"type": "number", "min": 50, "max": 300, "default": 120, "step": 5}
-        },
-        "invalid_parameters": [
-            "E/e' - NON VALIDE (artefacts prothèse)",
-            "Doppler tissulaire - NON VALIDE",
-            "Rapport E/A - Interprétation non standard"
-        ],
-        "recommendation": """
-        **Évaluation PRVG avec prothèse mitrale (ASE 2019):**
-        
-        **LIMITATIONS SÉVÈRES:**
-        - Paramètres conventionnels de PRVG NON VALIDES
-        - Artefacts acoustiques importants
-        
-        **Paramètres INDIRECTS:**
-        - Volume OG > 34 ml/m² → Suggestif d'élévation pressionnelle
-        - PAP systolique > 40 mmHg → Retentissement
-        - Gradient prothétique élevé → Dysfonction possible
-        
-        **Méthodes alternatives:**
-        - Cathétérisme cardiaque
-        - IRM cardiaque pour volumes
-        """,
-        "references": "ASE Recommendations 2019, EACVI 2018",
-        "filling_pressure_possible": "NON - Méthodes conventionnelles non valides"
-    },
-    
-    "Calcification annulaire mitrale sévère": {
-        "valid_parameters": {
-            "Volume auriculaire gauche indexé": {"type": "number", "min": 15, "max": 60, "default": 38, "step": 1},
-            "Vitesse onde TR maximale": {"type": "number", "min": 1.5, "max": 4.5, "default": 2.7, "step": 0.1},
-            "Flux veineux pulmonaire (rapport S/D)": {"type": "number", "min": 0.5, "max": 2.5, "default": 1.2, "step": 0.1}
-        },
-        "additional_parameters": {
-            "PAP systolique": {"type": "number", "min": 15, "max": 100, "default": 42, "step": 1},
-            "Temps de relaxation VG": {"type": "number", "min": 40, "max": 120, "default": 75, "step": 5}
-        },
-        "invalid_parameters": [
-            "E/e' - CONTRE-INDIQUÉ (surestimation systématique)",
-            "Doppler tissulaire mitral - NON FIABLE"
-        ],
-        "recommendation": """
-        **Évaluation PRVG avec calcification annulaire (ASE 2016):**
-        
-        **LIMITATIONS CRITIQUES:**
-        - E/e' SURESTIME la PRVG de 8-12 mmHg en moyenne
-        - Pseudo-normalisation des paramètres
-        
-        **Paramètres ALTERNATIFS:**
-        - Volume OG indexé > 34 ml/m²
-        - Vitesse TR > 2.8 m/s
-        - Rapport S/D flux pulmonaire < 1
-        - PAP systolique > 40 mmHg
-        
-        **Considérations:**
-        - L'élévation de PAP est le signe indirect le plus fiable
-        - Volume OG reflète l'exposition chronique aux pressions élevées
-        """,
-        "references": "ASE Guidelines 2016, JASE 2018",
-        "filling_pressure_possible": "Oui - Avec paramètres alternatifs seulement"
     }
 }
 
@@ -623,7 +463,7 @@ elif evaluation_choice == "Dysfonction Diastolique - Algorithme Complet":
     st.table(data)
 
 # ============================================================================
-# ÉVALUATION 3: PROBABILITÉ HTAP ESC 2022
+# ÉVALUATION 3: PROBABILITÉ HTAP ESC 2022 - RÉVISÉE ET COMPLÈTE
 # ============================================================================
 
 elif evaluation_choice == "Probabilité d'HTAP - ESC 2022":
@@ -632,95 +472,154 @@ elif evaluation_choice == "Probabilité d'HTAP - ESC 2022":
     
     st.markdown("""
     <div class="recommendation-box">
-    <strong>📋 Définition HTAP:</strong> PAPm ≥20 mmHg au repos + PVR ≥3 UW<br>
+    <strong>📋 Définition HTAP:</strong> PAPm ≥20 mmHg au repos + PVR ≥3 UW + PCP ≤15 mmHg<br>
     <strong>⚠️ Attention:</strong> Ces algorithmes donnent une probabilité, pas un diagnostic définitif
     </div>
     """, unsafe_allow_html=True)
     
-    # Paramètres d'entrée
+    # Paramètres d'entrée COMPLETS
     st.sidebar.markdown("---")
-    st.sidebar.subheader("📊 Paramètres Échocardiographiques")
+    st.sidebar.subheader("📊 Paramètres Échocardiographiques Complets")
     
+    # Groupe 1: Paramètres principaux
+    st.sidebar.markdown("**🎯 Paramètres principaux:**")
     tr_vitesse = st.sidebar.number_input("Vitesse TR maximale (m/s)", 1.5, 5.0, 2.8, 0.1)
     paps = st.sidebar.number_input("PAP systolique (mmHg)", 15, 120, 40)
-    vc_inferieur = st.sidebar.selectbox("VCI diamètre/collapsibilité", ["Normal (≤21 mm + collapsus >50%)", "Dilatée (≥21 mm) ou collapsus <50%", "Dilatée fixe"])
-    rv_ra_ratio = st.sidebar.selectbox("Rapport VD/OG (apical 4 cavités)", ["<1.0", "≥1.0"])
-    septum_paradoxal = st.sidebar.selectbox("Mouvement septum paradoxal", ["Non", "Oui"])
-    acceleration_time = st.sidebar.number_input("Temps d'accélération VTID (ms)", 40, 120, 80)
+    vc_diametre = st.sidebar.number_input("Diamètre VCI (mm)", 10, 30, 17)
+    vc_collapsus = st.sidebar.number_input("Collapsus VCI (%)", 0, 100, 50)
+    rv_ra_ratio = st.sidebar.selectbox("Rapport VD/OG (apical 4 cavités)", ["<0.6", "0.6-1.0", "≥1.0"])
     
-    # Algorithme pour patients sans cardiopathie gauche
+    # Groupe 2: Paramètres VD
+    st.sidebar.markdown("**📊 Fonction VD:**")
+    tapse = st.sidebar.number_input("TAPSE (mm)", 5, 25, 20)
+    s_tricuspide = st.sidebar.number_input("S' tricuspide (cm/s)", 5.0, 15.0, 12.0, 0.1)
+    fac_vd = st.sidebar.number_input("FAC VD (%)", 20, 60, 45)
+    strain_vd = st.sidebar.number_input("Strain longitudinal VD (%)", -30, -10, -22)
+    rimp_vd = st.sidebar.number_input("Index de performance VD (RIMP)", 0.2, 1.5, 0.4, 0.1)
+    
+    # Groupe 3: Paramètres artère pulmonaire
+    st.sidebar.markdown("**📈 Artère pulmonaire:**")
+    acceleration_time = st.sidebar.number_input("Temps d'accélération VTID (ms)", 40, 120, 80)
+    diam_ap = st.sidebar.number_input("Diamètre artère pulmonaire (mm)", 15, 40, 25)
+    notch_mesosystolique = st.sidebar.selectbox("Notch mésosystolique VTID", ["Absent", "Présent"])
+    pvr_estimee = st.sidebar.number_input("PVR estimée (UW)", 1.0, 15.0, 2.5, 0.1)
+    
+    # Groupe 4: Paramètres supplémentaires
+    st.sidebar.markdown("**🔍 Paramètres supplémentaires:**")
+    septum_paradoxal = st.sidebar.selectbox("Mouvement septum paradoxal", ["Absent", "Présent"])
+    gradient_diastolique_pulmonaire = st.sidebar.number_input("Gradient diastolique pulm (mmHg)", 0, 30, 5)
+    diam_og = st.sidebar.number_input("Diamètre OG (mm)", 30, 60, 40)
+    
+    # Calculs automatiques
     st.markdown("## 🎯 **Algorithme Probabilité HTAP - Patients sans Cardiopathie Gauche**")
     
-    # Calcul du score
-    score = 0
+    # Score principal ESC 2022
+    score_principal = 0
+    
+    # Vitesse TR
     if tr_vitesse <= 2.8 or tr_vitesse == 2.9:
-        score += 0
-    elif tr_vitesse <= 3.4:
-        score += 1
+        score_principal += 0
+    elif 3.0 <= tr_vitesse <= 3.4:
+        score_principal += 1
     else:
-        score += 2
+        score_principal += 2
     
-    if vc_inferieur == "Normal (≤21 mm + collapsus >50%)":
-        score += 0
-    elif vc_inferieur == "Dilatée (≥21 mm) ou collapsus <50%":
-        score += 1
+    # VCI
+    if vc_diametre <= 21 and vc_collapsus > 50:
+        score_principal += 0
+    elif vc_diametre > 21 or vc_collapsus <= 50:
+        score_principal += 1
     else:
-        score += 2
+        score_principal += 2
     
-    if rv_ra_ratio == "<1.0":
-        score += 0
+    # Ratio VD/OG
+    if rv_ra_ratio == "<0.6":
+        score_principal += 0
+    elif rv_ra_ratio == "0.6-1.0":
+        score_principal += 1
     else:
-        score += 1
+        score_principal += 2
     
-    if septum_paradoxal == "Non":
-        score += 0
+    # Septum paradoxal
+    if septum_paradoxal == "Présent":
+        score_principal += 1
+    
+    # Score secondaire (paramètres de confirmation)
+    score_secondaire = 0
+    if tapse < 17: score_secondaire += 1
+    if s_tricuspide < 9.5: score_secondaire += 1
+    if fac_vd < 35: score_secondaire += 1
+    if acceleration_time < 80: score_secondaire += 1
+    if notch_mesosystolique == "Présent": score_secondaire += 1
+    if pvr_estimee > 3: score_secondaire += 1
+    
+    # Interprétation
+    st.markdown(f"### **Score de probabilité principal: {score_principal}/7 points**")
+    st.markdown(f"### **Score de confirmation secondaire: {score_secondaire}/6 points**")
+    
+    # Décision
+    if score_principal <= 1:
+        st.markdown('<div class="success-box">🟢 **PROBABILITÉ FAIBLE**<br>Score principal ≤1 - HTAP peu probable</div>', unsafe_allow_html=True)
+    elif score_principal == 2:
+        if score_secondaire >= 2:
+            st.markdown('<div class="warning">🟡 **PROBABILITÉ INTERMÉDIAIRE**<br>Score principal = 2 + signes secondaires → Investigations nécessaires</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="success-box">🟢 **PROBABILITÉ FAIBLE**<br>Score principal = 2 mais peu de signes secondaires</div>', unsafe_allow_html=True)
     else:
-        score += 1
+        st.markdown('<div class="danger-box">🔴 **PROBABILITÉ ÉLEVÉE**<br>Score principal ≥3 - HTAP probable, cathétérisme recommandé</div>', unsafe_allow_html=True)
     
-    # Interprétation du score
-    st.markdown(f"### **Score de probabilité: {score}/6 points**")
-    
-    if score <= 1:
-        st.markdown('<div class="success-box">🟢 **PROBABILITÉ FAIBLE**<br>Score ≤1 - HTAP peu probable</div>', unsafe_allow_html=True)
-    elif score == 2:
-        st.markdown('<div class="warning">🟡 **PROBABILITÉ INTERMÉDIAIRE**<br>Score = 2 - Investigations complémentaires nécessaires</div>', unsafe_allow_html=True)
-    else:
-        st.markdown('<div class="danger-box">🔴 **PROBABILITÉ ÉLEVÉE**<br>Score ≥3 - HTAP probable, cathétérisme recommandé</div>', unsafe_allow_html=True)
-    
-    # Signes supplémentaires
-    st.markdown("## 🔍 **Signes Échocardiographiques Supplémentaires**")
+    # Tableau détaillé des paramètres
+    st.markdown("## 📊 **Analyse Détaillée des Paramètres**")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("**📊 Paramètres VD:**")
-        st.markdown("- TAPSE < 17 mm → Dysfonction VD")
-        st.markdown("- S' tricuspide < 9.5 cm/s → Dysfonction VD")
-        st.markdown("- FAC VD < 35% → Dysfonction VD")
-        st.markdown("- Strain longitudinal VD > -20% → Altération")
-        
-    with col2:
-        st.markdown("**📈 Paramètres Artère Pulmonaire:**")
-        st.markdown("- Temps accélération < 80 ms → Suggestif HTAP")
-        st.markdown("- Notch mésosystolique → HTAP pré-capillaire")
-        st.markdown("- Diamètre AP > 25 mm → Dilatation")
+        st.markdown("**📈 Paramètres Principaux:**")
+        data_principaux = {
+            "Paramètre": ["Vitesse TR", "PAPs", "VCI diam/collapsus", "VD/OG ratio", "Septum paradoxal"],
+            "Valeur": [f"{tr_vitesse} m/s", f"{paps} mmHg", f"{vc_diametre} mm/{vc_collapsus}%", rv_ra_ratio, septum_paradoxal],
+            "Interprétation": [
+                "Normal" if tr_vitesse <= 2.8 else "Élevé" if tr_vitesse <= 3.4 else "Très élevé",
+                "Normal" if paps <= 35 else "Élevé" if paps <= 50 else "Très élevé",
+                "Normal" if vc_diametre <= 21 and vc_collapsus > 50 else "Anormal",
+                "Normal" if rv_ra_ratio == "<0.6" else "Limite" if rv_ra_ratio == "0.6-1.0" else "Anormal",
+                "Normal" if septum_paradoxal == "Absent" else "Anormal"
+            ]
+        }
+        st.dataframe(pd.DataFrame(data_principaux))
     
-    # Algorithme pour patients avec cardiopathie gauche
+    with col2:
+        st.markdown("**📊 Paramètres Secondaires:**")
+        data_secondaires = {
+            "Paramètre": ["TAPSE", "S' tricuspide", "FAC VD", "Temps accélération", "PVR estimée"],
+            "Valeur": [f"{tapse} mm", f"{s_tricuspide} cm/s", f"{fac_vd}%", f"{acceleration_time} ms", f"{pvr_estimee} UW"],
+            "Interprétation": [
+                "Normal" if tapse >= 17 else "Altéré",
+                "Normal" if s_tricuspide >= 9.5 else "Altéré",
+                "Normal" if fac_vd >= 35 else "Altéré",
+                "Normal" if acceleration_time >= 80 else "Court",
+                "Normal" if pvr_estimee <= 3 else "Élevée"
+            ]
+        }
+        st.dataframe(pd.DataFrame(data_secondaires))
+    
+    # Algorithme pour cardiopathie gauche
     st.markdown("## 💔 **Algorithme pour Patients avec Cardiopathie Gauche**")
     
     st.markdown("""
     <div class="step-box">
-    <strong>Étape 1:</strong> Évaluer la probabilité HTAP sans contexte<br>
-    <strong>Étape 2:</strong> Si probabilité ≥ intermédiaire, rechercher:<br>
-    &nbsp;&nbsp;• Discordance sévère VD/atteinte VG<br>
+    <strong>Étape 1:</strong> Évaluer la probabilité HTAP sans contexte → Score principal<br>
+    <strong>Étape 2:</strong> Si probabilité ≥ intermédiaire, rechercher discordance VD/VG:<br>
+    &nbsp;&nbsp;• Atteinte VD disproportionnée vs atteinte VG<br>
     &nbsp;&nbsp;• PVR ≥ 5 UW par écho<br>
     &nbsp;&nbsp;• Temps accélération VTID très court (<65 ms)<br>
-    <strong>Étape 3:</strong> Si présent → Cathétérisme pour confirmation
+    &nbsp;&nbsp;• Strain VD très altéré (> -15%)<br>
+    <strong>Étape 3:</strong> Si ≥2 critères de discordance → Suspicion HTAP combinée, cathétérisme
     </div>
     """, unsafe_allow_html=True)
 
 # ============================================================================
-# ÉVALUATION 4: PÉRICARDITE CONSTRICTIVE vs RESTRICTIVE
+# ÉVALUATION 4: PÉRICARDITE CONSTRICTIVE vs RESTRICTIVE - RÉVISÉE
 # ============================================================================
 
 elif evaluation_choice == "Péricardite Constrictive vs Restrictive":
@@ -735,117 +634,146 @@ elif evaluation_choice == "Péricardite Constrictive vs Restrictive":
     </div>
     """, unsafe_allow_html=True)
     
-    # Paramètres d'entrée
+    # Paramètres d'entrée COMPLETS
     st.sidebar.markdown("---")
-    st.sidebar.subheader("📊 Critères Différentiels")
+    st.sidebar.subheader("📊 Critères Différentiels Complets")
     
-    variation_respiratoire = st.sidebar.selectbox("Variation respiratoire flux mitral E", ["<10%", "≥25%", "Intermédiaire (10-25%)"])
-    septal_bounce = st.sidebar.selectbox("Mouvement septal paradoxal", ["Présent", "Absent"])
-    annulus_reverse = st.sidebar.selectbox("Annulus paradoxal (e' latéral > e' septal)", ["Oui", "Non"])
+    st.sidebar.markdown("**🔄 Paramètres respiratoires:**")
+    variation_respiratoire = st.sidebar.selectbox("Variation respiratoire flux mitral E", ["<10%", "10-25%", "≥25%"])
+    variation_tricuspide = st.sidebar.selectbox("Variation respiratoire flux tricuspide", ["<15%", "15-40%", "≥40%"])
+    augmentation_inspiratoire_tr = st.sidebar.selectbox("Augmentation inspiratoire onde TR", ["Absente", "Présente"])
+    
+    st.sidebar.markdown("**📐 Paramètres structuraux:**")
+    septal_bounce = st.sidebar.selectbox("Mouvement septal paradoxal", ["Absent", "Présent"])
+    annulus_reverse = st.sidebar.selectbox("Annulus paradoxal (e' latéral > e' septal)", ["Non", "Oui"])
+    epaisseur_pericarde = st.sidebar.selectbox("Épaisseur péricarde", ["Normal (<3 mm)", "Épaissi (3-5 mm)", "Très épaissi (>5 mm)", "Calcifié"])
+    dilatation_veine_cave = st.sidebar.selectbox("Dilatation veine cave", ["Absente", "Modérée", "Sévère"])
+    
+    st.sidebar.markdown("**📊 Paramètres fonctionnels:**")
     vp_couleur = st.sidebar.number_input("Vitesse propagation Vp (cm/s)", 30, 80, 45)
     strain_longitudinal = st.sidebar.number_input("Strain longitudinal global (%)", -25, -10, -18)
+    fonction_vg = st.sidebar.selectbox("Fonction VG systolique", ["Normale", "Légèrement altérée", "Modérément altérée", "Sévèrement altérée"])
+    fonction_vd = st.sidebar.selectbox("Fonction VD", ["Normale", "Altérée"])
     
-    st.sidebar.markdown("**Paramètres structurels:**")
-    epaisseur_pericarde = st.sidebar.selectbox("Épaisseur péricarde", ["Normal (<3 mm)", "Épaissi (≥3 mm)", "Calcifié"])
-    fonction_vg = st.sidebar.selectbox("Fonction VG", ["Préservée", "Légèrement altérée", "Modérément altérée"])
+    st.sidebar.markdown("**🔍 Paramètres avancés:**")
+    rapport_e_e_prime = st.sidebar.number_input("Rapport E/e' moyen", 5.0, 25.0, 12.0, 0.1)
+    temps_relaxation_vg = st.sidebar.number_input("Temps relaxation VG (ms)", 40, 120, 65)
+    flux_hepatique = st.sidebar.selectbox("Flux hépatique diastolique", ["Normal", "Inversion expiratoire", "Inversion continu"])
     
-    # Algorithme de décision
-    st.markdown("## 🎯 **Arbre Décisionnel ASE 2021**")
+    # Algorithme de décision COMPLET
+    st.markdown("## 🎯 **Arbre Décisionnel ASE 2021 Révisé**")
     
     score_constriction = 0
     score_restrictif = 0
     
-    # Critères constriction
-    if variation_respiratoire == "≥25%":
-        score_constriction += 2
-    if septal_bounce == "Présent":
-        score_constriction += 2
-    if annulus_reverse == "Oui":
-        score_constriction += 1
-    if epaisseur_pericarde != "Normal (<3 mm)":
-        score_constriction += 1
+    # Critères constriction majeurs (2 points chacun)
+    if variation_respiratoire == "≥25%": score_constriction += 2
+    if septal_bounce == "Présent": score_constriction += 2
+    if annulus_reverse == "Oui": score_constriction += 2
+    if epaisseur_pericarde in ["Très épaissi (>5 mm)", "Calcifié"]: score_constriction += 2
     
-    # Critères restrictif
-    if variation_respiratoire == "<10%":
-        score_restrictif += 2
-    if fonction_vg != "Préservée":
-        score_restrictif += 1
-    if strain_longitudinal > -15:  # Moins négatif = plus altéré
-        score_restrictif += 2
+    # Critères constriction mineurs (1 point chacun)
+    if variation_tricuspide == "≥40%": score_constriction += 1
+    if augmentation_inspiratoire_tr == "Présente": score_constriction += 1
+    if dilatation_veine_cave in ["Modérée", "Sévère"]: score_constriction += 1
+    if flux_hepatique in ["Inversion expiratoire", "Inversion continu"]: score_constriction += 1
     
-    st.markdown(f"### **Score Constriction: {score_constriction}/6**")
-    st.markdown(f"### **Score Restrictif: {score_restrictif}/5**")
+    # Critères restrictif majeurs (2 points chacun)
+    if fonction_vg in ["Modérément altérée", "Sévèrement altérée"]: score_restrictif += 2
+    if strain_longitudinal > -15: score_restrictif += 2
+    if rapport_e_e_prime > 15: score_restrictif += 1
     
-    if score_constriction >= 3 and score_constriction > score_restrictif:
+    # Critères restrictif mineurs (1 point chacun)
+    if variation_respiratoire == "<10%": score_restrictif += 1
+    if fonction_vd == "Altérée": score_restrictif += 1
+    if vp_couleur < 40: score_restrictif += 1
+    
+    st.markdown(f"### **Score Constriction: {score_constriction}/11**")
+    st.markdown(f"### **Score Restrictif: {score_restrictif}/7**")
+    
+    # Diagnostic
+    if score_constriction >= 4 and score_constriction > score_restrictif:
         st.markdown('<div class="danger-box">🎯 **CONSTRICTION PÉRICARDIQUE PROBABLE**<br>Score élevé pour constriction</div>', unsafe_allow_html=True)
+        if score_constriction >= 6:
+            st.markdown('<div class="critical-param">🔴 **CONSTRICTION PÉRICARDIQUE FORTEMENT PROBABLE**<br>Score très élevé</div>', unsafe_allow_html=True)
     elif score_restrictif >= 3 and score_restrictif > score_constriction:
         st.markdown('<div class="danger-box">🎯 **CARDIOMYOPATHIE RESTRICTIVE PROBABLE**<br>Score élevé pour restriction</div>', unsafe_allow_html=True)
     else:
-        st.markdown('<div class="warning">⚠️ **DIAGNOSTIC INDÉTERMINÉ**<br>Rechercher d\'autres causes ou imagerie complémentaire</div>', unsafe_allow_html=True)
+        st.markdown('<div class="warning">⚠️ **DIAGNOSTIC INDÉTERMINÉ**<br>Rechercher d\'autres causes ou imagerie complémentaire (IRM, scanner)</div>', unsafe_allow_html=True)
     
-    # Tableau comparatif
-    st.markdown("## 📊 **Tableau Comparatif des Critères**")
+    # Tableau comparatif détaillé
+    st.markdown("## 📊 **Tableau Comparatif Complet des Critères**")
     
     data_comparatif = {
-        "Paramètre": ["Variation respiratoire onde E", "Mouvement septum", "Annulus mitral", "Épaisseur péricarde", "Fonction VG", "Strain longitudinal"],
-        "Constriction": ["≥25%", "Bounce paradoxal", "e' latéral > e' septal", "Épaissi/calcifié", "Préservée", "Relativement préservé"],
-        "Restrictive": ["<10%", "Normal ou réduit", "e' latéral ≈ e' septal", "Normal", "Altérée", "Altéré (≥ -15%)"]
+        "Paramètre": ["Variation respiratoire E mitral", "Mouvement septum", "Annulus mitral", "Épaisseur péricarde", "Fonction VG", "Strain longitudinal", "Flux hépatique", "Dilatation VCI"],
+        "Constriction": ["≥25%", "Bounce paradoxal", "e' latéral > e' septal", "Épaissi/calcifié", "Préservée", "Relativement préservé", "Inversion expiratoire", "Fréquente"],
+        "Restrictive": ["<10%", "Normal ou réduit", "e' latéral ≈ e' septal", "Normal", "Altérée", "Altéré (≥ -15%)", "Normal", "Variable"]
     }
     
     st.table(data_comparatif)
-    
-    # Techniques de mesure spécifiques
-    st.markdown("## 🔬 **Techniques de Mesure Recommandées**")
-    
-    with st.expander("📐 **Comment mesurer la variation respiratoire**"):
-        st.markdown("""
-        1. **Doppler pulsé mitral** en apical 4 cavités
-        2. Demander au patient de respirer calmement
-        3. Mesurer la vitesse E sur **3 cycles expiratoires** et **3 cycles inspiratoires**
-        4. Calcul: (E_expir - E_inspir) / E_expir × 100
-        5. **Seuil constriction:** Variation ≥25%
-        """)
-    
-    with st.expander("📐 **Comment identifier le septal bounce**"):
-        st.markdown("""
-        1. **Mode M** en parasternal axe court
-        2. Ligne de base au **niveau des piliers**
-        3. Rechercher mouvement septal **brusque en début diastole**
-        4. **Pattern caractéristique:** Mouvement vers la droite en diastole
-        """)
 
 # ============================================================================
-# ÉVALUATION 5: PROTHÈSES VALVULAIRES
+# ÉVALUATION 5: PROTHÈSES VALVULAIRES - RÉVISÉE ET COMPLÈTE
 # ============================================================================
 
 elif evaluation_choice == "Évaluation Prothèses Valvulaires":
     
-    st.markdown("## ⚙️ Évaluation des Prothèses Valvulaires - Guide Pas-à-Pas")
+    st.markdown("## ⚙️ Évaluation des Prothèses Valvulaires - Guide Pas-à-Pas Complet")
     
+    # Sélection du type de prothèse
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🔧 Type de Prothèse")
     type_prothese = st.sidebar.selectbox("Type de prothèse", [
         "Prothèse aortique mécanique",
         "Prothèse aortique biologique", 
         "Prothèse mitrale mécanique",
-        "Prothèse mitrale biologique"
+        "Prothèse mitrale biologique",
+        "TAVI",
+        "Anneau mitral"
     ])
     
+    # Paramètres communs
     st.sidebar.markdown("---")
     st.sidebar.subheader("📊 Paramètres Hémodynamiques")
     
-    if "aortique" in type_prothese:
+    # Paramètres selon le type de prothèse
+    if "aortique" in type_prothese or type_prothese == "TAVI":
+        st.sidebar.markdown("**📈 Paramètres aortiques:**")
         gradient_moyen = st.sidebar.number_input("Gradient moyen (mmHg)", 5, 60, 15)
-        vmax = st.sidebar.number_input("Vitesse max (m/s)", 1.5, 5.0, 2.5, 0.1)
-        eoa = st.sidebar.number_input("Surface effective (cm²)", 0.5, 3.0, 1.5, 0.1)
+        gradient_pic = st.sidebar.number_input("Gradient pic (mmHg)", 10, 100, 25)
+        vti_lvot = st.sidebar.number_input("VTI LVOT (cm)", 15, 30, 20)
+        vti_prothese = st.sidebar.number_input("VTI prothèse (cm)", 10, 25, 15)
+        eoa = st.sidebar.number_input("Surface effective (EOA cm²)", 0.5, 3.0, 1.5, 0.1)
         dvi = st.sidebar.number_input("Index de performance (DVI)", 0.1, 0.5, 0.35, 0.01)
-    else:  # Mitrale
+        acceleration_time = st.sidebar.number_input("Temps accélération (ms)", 50, 150, 90)
+        
+        # Paramètres théoriques pour comparaison
+        st.sidebar.markdown("**📐 Paramètres théoriques:**")
+        eoa_theorique = st.sidebar.number_input("EOA théorique (cm²)", 1.0, 4.0, 2.0, 0.1)
+        taille_prothese = st.sidebar.number_input("Taille prothèse (mm)", 19, 29, 23)
+        
+    else:  # Prothèses mitrales
+        st.sidebar.markdown("**📈 Paramètres mitrales:**")
         gradient_moyen = st.sidebar.number_input("Gradient moyen (mmHg)", 2, 15, 5)
         pht = st.sidebar.number_input("Temps pression-demi (ms)", 50, 300, 120)
         eoa = st.sidebar.number_input("Surface effective (cm²)", 0.5, 3.0, 1.8, 0.1)
+        pression_og_estimee = st.sidebar.number_input("Pression OG estimée (mmHg)", 5, 40, 15)
+        
+        # Paramètres théoriques pour comparaison
+        st.sidebar.markdown("**📐 Paramètres théoriques:**")
+        eoa_theorique = st.sidebar.number_input("EOA théorique (cm²)", 1.5, 4.0, 2.5, 0.1)
+        taille_prothese = st.sidebar.number_input("Taille prothèse (mm)", 25, 35, 29)
     
-    st.sidebar.markdown("**Régurgitation:**")
+    # Paramètres communs à toutes les prothèses
+    st.sidebar.markdown("**🔄 Régurgitation:**")
     regurgitation = st.sidebar.selectbox("Régurgitation para-valvulaire", ["Absente", "Légère", "Modérée", "Sévère"])
+    localisation_regurgitation = st.sidebar.selectbox("Localisation fuite", ["Para-valvulaire", "Intra-prothétique", "Mixte"])
     
-    # Algorithme d'évaluation
+    st.sidebar.markdown("**📊 Fonction cardiaque:**")
+    fevg = st.sidebar.number_input("FE VG (%)", 20, 70, 55)
+    pap_systolique = st.sidebar.number_input("PAP systolique (mmHg)", 15, 100, 35)
+    
+    # Algorithme d'évaluation COMPLET
     st.markdown(f"## 🔍 **Évaluation de la {type_prothese}**")
     
     st.markdown("### 📋 **Étape 1: Mesures Standard Obligatoires**")
@@ -853,80 +781,121 @@ elif evaluation_choice == "Évaluation Prothèses Valvulaires":
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("**📊 Prothèse Aortique:**")
+        st.markdown("**📊 Prothèse Aortique/TAVI:**")
         st.markdown("- Gradient moyen et pic")
         st.markdown("- Surface effective (EOA)")
         st.markdown("- Index de performance (DVI)")
         st.markdown("- Accélération temps")
         st.markdown("- Vitesse VTI LVOT/Prothèse")
+        st.markdown("- Comparaison EOA mesurée/théorique")
         
     with col2:
-        st.markdown("**📊 Prothèse Mitrale:**")
+        st.markdown("**📊 Prothèse Mitrale/Anneau:**")
         st.markdown("- Gradient moyen")
         st.markdown("- Temps pression-demi (PHT)")
         st.markdown("- Surface effective")
         st.markdown("- Pression artérielle pulmonaire")
         st.markdown("- Fonction VG")
+        st.markdown("- Comparaison EOA mesurée/théorique")
     
-    st.markdown("### 🎯 **Étape 2: Critères de Dysfonction**")
+    st.markdown("### 🎯 **Étape 2: Analyse de la Performance**")
     
-    if "aortique" in type_prothese:
-        st.markdown("**Critères de Sténose Prothétique Aortique (ESC 2021):**")
+    # Calculs spécifiques selon le type
+    if "aortique" in type_prothese or type_prothese == "TAVI":
+        # Calcul du DVI
+        dvi_calcule = vti_lvot / vti_prothese if vti_prothese > 0 else dvi
         
-        if gradient_moyen > 35 and eoa < 1.0 and dvi < 0.25:
-            st.markdown('<div class="danger-box">🔴 **DYSFONCTION SÉVÈRE**<br>Tous critères présents</div>', unsafe_allow_html=True)
-        elif gradient_moyen > 20 or eoa < 1.2 or dvi < 0.30:
-            st.markdown('<div class="warning">🟡 **DYSFONCTION MODÉRÉE**<br>Au moins 1 critère</div>', unsafe_allow_html=True)
+        # Comparaison EOA théorique/mesurée
+        ratio_eoa = (eoa / eoa_theorique) * 100 if eoa_theorique > 0 else 0
+        
+        st.markdown(f"**📐 Comparaison EOA:** {ratio_eoa:.1f}% (mesurée/théorique)")
+        st.markdown(f"**📊 DVI calculé:** {dvi_calcule:.2f}")
+        
+        # Critères de dysfonction
+        st.markdown("**🔍 Critères de Sténose Prothétique Aortique (ESC 2021):**")
+        
+        criteres_severes = 0
+        if gradient_moyen > 35: criteres_severes += 1
+        if eoa < 1.0: criteres_severes += 1
+        if dvi_calcule < 0.25: criteres_severes += 1
+        if ratio_eoa < 50: criteres_severes += 1
+        
+        if criteres_severes >= 3:
+            st.markdown('<div class="danger-box">🔴 **DYSFONCTION SÉVÈRE**<br>≥3 critères sévères présents</div>', unsafe_allow_html=True)
+        elif criteres_severes >= 2:
+            st.markdown('<div class="warning">🟡 **DYSFONCTION MODÉRÉE**<br>2 critères sévères</div>', unsafe_allow_html=True)
+        elif gradient_moyen > 20 or eoa < 1.2 or dvi_calcule < 0.30 or ratio_eoa < 65:
+            st.markdown('<div class="warning">🟡 **DYSFONCTION LÉGÈRE**<br>Au moins 1 critère</div>', unsafe_allow_html=True)
         else:
             st.markdown('<div class="success-box">🟢 **FONCTION NORMALE**<br>Critères dans les limites</div>', unsafe_allow_html=True)
             
-    else:  # Mitrale
-        st.markdown("**Critères de Sténose Prothétique Mitrale (ASE 2017):**")
+    else:  # Prothèses mitrales
+        # Comparaison EOA théorique/mesurée
+        ratio_eoa = (eoa / eoa_theorique) * 100 if eoa_theorique > 0 else 0
         
-        if gradient_moyen > 10 and eoa < 1.0:
+        st.markdown(f"**📐 Comparaison EOA:** {ratio_eoa:.1f}% (mesurée/théorique)")
+        
+        # Critères de dysfonction
+        st.markdown("**🔍 Critères de Sténose Prothétique Mitrale (ASE 2017):**")
+        
+        criteres_severes = 0
+        if gradient_moyen > 10: criteres_severes += 1
+        if eoa < 1.0: criteres_severes += 1
+        if pht > 200: criteres_severes += 1
+        if ratio_eoa < 50: criteres_severes += 1
+        
+        if criteres_severes >= 3:
             st.markdown('<div class="danger-box">🔴 **DYSFONCTION SÉVÈRE**</div>', unsafe_allow_html=True)
-        elif gradient_moyen > 7 or eoa < 1.3:
+        elif criteres_severes >= 2:
             st.markdown('<div class="warning">🟡 **DYSFONCTION MODÉRÉE**</div>', unsafe_allow_html=True)
+        elif gradient_moyen > 7 or eoa < 1.3 or ratio_eoa < 65:
+            st.markdown('<div class="warning">🟡 **DYSFONCTION LÉGÈRE**</div>', unsafe_allow_html=True)
         else:
             st.markdown('<div class="success-box">🟢 **FONCTION NORMALE**</div>', unsafe_allow_html=True)
     
     st.markdown("### 🔬 **Étape 3: Recherche de Complications**")
     
-    with st.expander("📋 **Checklist complications prothèses mécaniques**"):
-        st.markdown("""
-        - **Thrombose:** Gradient augmenté progressif
-        - **Pannus:** Gradient augmenté progressif + EOA réduite
-        - **Fuites para-valvulaires:** Jet excentrique
-        - **Déhiscence:** Mobilité excessive de l'anneau
-        - **Endocardite:** Vegetations, abcès, nouvelles fuites
-        """)
-    
-    with st.expander("📋 **Checklist complications prothèses biologiques**"):
-        st.markdown("""
-        - **Dégénérescence:** Calcifications, restriction mobilité
-        - **Sténose:** Gradient augmenté progressif
-        - **Régurgitation intra-prothétique:** Usure des feuillets
-        - **Endocardite:** Mêmes critères que mécaniques
-        """)
+    with st.expander("📋 **Checklist complications détaillée**"):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**⚙️ Prothèses Mécaniques:**")
+            st.markdown("- **Thrombose:** Gradient augmenté progressif")
+            st.markdown("- **Pannus:** Gradient augmenté progressif + EOA réduite")
+            st.markdown("- **Fuites para-valvulaires:** Jet excentrique")
+            st.markdown("- **Déhiscence:** Mobilité excessive de l'anneau")
+            st.markdown("- **Endocardite:** Vegetations, abcès, nouvelles fuites")
+            st.markdown("- **Hémolyse:** Fuites importantes")
+            
+        with col2:
+            st.markdown("**🌿 Prothèses Biologiques/TAVI:**")
+            st.markdown("- **Dégénérescence:** Calcifications, restriction mobilité")
+            st.markdown("- **Sténose:** Gradient augmenté progressif")
+            st.markdown("- **Régurgitation intra-prothétique:** Usure des feuillets")
+            st.markdown("- **Endocardite:** Mêmes critères que mécaniques")
+            st.markdown("- **Malposition:** Fuites para-valvulaires")
+            st.markdown("- **Conduction disorders:** Blocs post-implantation")
     
     st.markdown("### 📈 **Valeurs de Référence par Type de Prothèse**")
     
-    if "aortique" in type_prothese:
+    if "aortique" in type_prothese or type_prothese == "TAVI":
         data_prothese = {
             "Type": ["Mécanique double ailette", "Bioprothèse stented", "Bioprothèse stentless", "TAVI"],
             "Gradient moyen normal": ["10-20 mmHg", "10-15 mmHg", "5-10 mmHg", "5-10 mmHg"],
             "EOA normale": ["1.5-2.5 cm²", "1.2-1.8 cm²", "1.4-2.2 cm²", "1.5-2.5 cm²"],
-            "DVI normal": [">0.30", ">0.30", ">0.30", ">0.30"]
+            "DVI normal": [">0.30", ">0.30", ">0.30", ">0.30"],
+            "Ratio EOA attendu": [">65%", ">65%", ">65%", ">65%"]
         }
     else:
         data_prothese = {
             "Type": ["Mécanique double ailette", "Bioprothèse stented", "Anneau mitral", "Valve native préservée"],
             "Gradient moyen normal": ["3-5 mmHg", "3-6 mmHg", "1-3 mmHg", "1-3 mmHg"],
             "EOA normale": ["2.0-3.0 cm²", "1.8-2.5 cm²", "3.0-4.0 cm²", "4.0-5.0 cm²"],
-            "PHT normal": ["80-120 ms", "90-130 ms", "60-100 ms", "60-80 ms"]
+            "PHT normal": ["80-120 ms", "90-130 ms", "60-100 ms", "60-80 ms"],
+            "Ratio EOA attendu": [">65%", ">65%", "N/A", "N/A"]
         }
     
-    st.table(data_prothese)
+    st.table(pd.DataFrame(data_prothese))
 
 # ============================================================================
 # PIED DE PAGE COMMUN
@@ -941,6 +910,7 @@ st.markdown("""
 <li>L'interprétation doit être adaptée au contexte clinique individuel</li>
 <li>En cas de doute, consulter un échocardiographiste expérimenté</li>
 <li>Les valeurs seuils peuvent varier selon les laboratoires</li>
+<li>Le cathétérisme cardiaque reste le gold standard pour les diagnostics incertains</li>
 </ul>
 </div>
 """, unsafe_allow_html=True)
@@ -958,4 +928,6 @@ with st.expander("ℹ️ À propos de cette application"):
     **⚠️ Usage:** Complément à l'expertise clinique, pas un substitut
     
     **🔄 Mise à jour:** Dernière mise à jour - Mars 2024
+    
+    **📊 Paramètres inclus:** Tous les paramètres essentiels selon les dernières recommandations
     """)

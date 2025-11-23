@@ -1,103 +1,166 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
+from datetime import datetime
 
 # Configuration de la page
 st.set_page_config(
-    page_title="Guide Échocardiographie Complet - Cardiologie",
+    page_title="Échocardiographie Expert - Guide Complet Dynamique",
     page_icon="❤️",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# Style CSS personnalisé
+# ============================================================================
+# STYLE CSS COMPLET AVEC ANIMATIONS
+# ============================================================================
+
 st.markdown("""
 <style>
     .main-header {
-        font-size: 2.5rem;
+        font-size: 2.8rem;
         color: #1f77b4;
         text-align: center;
         margin-bottom: 2rem;
+        font-weight: bold;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+    }
+    .dynamic-result {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
+        margin: 1rem 0;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        transition: all 0.4s ease;
+        border: 2px solid transparent;
+    }
+    .dynamic-result:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+        border: 2px solid #ffffff;
+    }
+    .parameter-feedback {
+        background-color: #f8f9fa;
+        border-left: 5px solid #6c757d;
+        padding: 1.2rem;
+        margin: 0.7rem 0;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        font-size: 1.1rem;
+    }
+    .parameter-feedback.good {
+        border-left-color: #28a745;
+        background-color: #d4edda;
+        box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
+    }
+    .parameter-feedback.warning {
+        border-left-color: #ffc107;
+        background-color: #fff3cd;
+        box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2);
+    }
+    .parameter-feedback.danger {
+        border-left-color: #dc3545;
+        background-color: #f8d7da;
+        box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2);
+    }
+    .real-time-value {
+        font-size: 1.3rem;
+        font-weight: bold;
+        color: #1f77b4;
+        animation: pulse 1.5s infinite;
+        display: inline-block;
+        padding: 0.2rem 0.8rem;
+        border-radius: 20px;
+        background: rgba(255,255,255,0.9);
+    }
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    .metric-card {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        padding: 1.8rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        margin: 0.8rem;
+        transition: all 0.4s ease;
+        text-align: center;
+        border: 1px solid #e0e0e0;
+    }
+    .metric-card:hover {
+        transform: scale(1.08);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
     }
     .section-header {
-        font-size: 1.8rem;
+        font-size: 2rem;
         color: #2e86ab;
         margin: 2rem 0 1rem 0;
-        border-bottom: 2px solid #2e86ab;
-        padding-bottom: 0.5rem;
+        border-bottom: 3px solid #2e86ab;
+        padding-bottom: 0.7rem;
+        font-weight: bold;
     }
-    .recommendation-box {
-        background-color: #f0f2f6;
+    .stSlider > div > div > div {
+        background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+    }
+    .stButton > button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 0.7rem 2rem;
+        border-radius: 25px;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+    }
+    .stButton > button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    }
+    .patient-info {
+        background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
         padding: 1.5rem;
-        border-radius: 10px;
-        border-left: 5px solid #1f77b4;
+        border-radius: 12px;
         margin: 1rem 0;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
-    .warning {
-        background-color: #fff3cd;
-        border: 1px solid #ffeaa7;
-        border-radius: 5px;
-        padding: 1rem;
+    .critical-alert {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 12px;
         margin: 1rem 0;
+        animation: alert-pulse 2s infinite;
+        border: 3px solid #ffdd59;
     }
-    .success-box {
-        background-color: #d4edda;
-        border: 1px solid #c3e6cb;
-        border-radius: 5px;
-        padding: 1rem;
+    @keyframes alert-pulse {
+        0% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7); }
+        70% { box-shadow: 0 0 0 15px rgba(255, 107, 107, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0); }
+    }
+    .success-alert {
+        background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 12px;
         margin: 1rem 0;
+        border: 2px solid #55efc4;
     }
-    .danger-box {
-        background-color: #f8d7da;
-        border: 1px solid #f5c6cb;
-        border-radius: 5px;
-        padding: 1rem;
+    .warning-alert {
+        background: linear-gradient(135deg, #feca57 0%, #ff9ff3 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 12px;
         margin: 1rem 0;
-    }
-    .step-box {
-        background-color: #e9ecef;
-        border-left: 4px solid #6c757d;
-        padding: 1rem;
-        margin: 0.5rem 0;
-    }
-    .valid-param {
-        color: #155724;
-        background-color: #d4edda;
-        padding: 0.5rem;
-        border-radius: 3px;
-        margin: 0.2rem 0;
-    }
-    .invalid-param {
-        color: #721c24;
-        background-color: #f8d7da;
-        padding: 0.5rem;
-        border-radius: 3px;
-        margin: 0.2rem 0;
-    }
-    .caution-param {
-        color: #856404;
-        background-color: #fff3cd;
-        padding: 0.5rem;
-        border-radius: 3px;
-        margin: 0.2rem 0;
-    }
-    .critical-param {
-        color: #856404;
-        background-color: #ffcccc;
-        padding: 0.5rem;
-        border-radius: 3px;
-        margin: 0.2rem 0;
-        border-left: 4px solid #ff0000;
-    }
-    .dataframe {
-        font-size: 0.9rem;
+        border: 2px solid #ffdd59;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================================
-# BASES DE DONNÉES DES PROTHÈSES VALVULAIRES
+# BASES DE DONNÉES COMPLÈTES DES PROTHÈSES
 # ============================================================================
 
-# Base de données des prothèses aortiques
 protheses_aortiques = {
     "Mécaniques": {
         "St Jude Medical (Regent)": {
@@ -172,7 +235,6 @@ protheses_aortiques = {
     }
 }
 
-# Base de données des prothèses mitrales
 protheses_mitrales = {
     "Mécaniques": {
         "St Jude Medical": {
@@ -208,849 +270,1161 @@ protheses_mitrales = {
     }
 }
 
-# Titre principal
-st.markdown('<div class="main-header">📊 Guide Échocardiographie Complet - Évaluations Avancées</div>', unsafe_allow_html=True)
-
 # ============================================================================
-# DICTIONNAIRES DES DONNÉES
+# FONCTIONS DE CALCUL DYNAMIQUE COMPLÈTES
 # ============================================================================
 
-# Dictionnaire pour PRVG
-situations_prvg = {
-    "FE VG ≥ 50% - Patient standard": {
-        "valid_parameters": {
-            "E/e' moyen": {"type": "number", "min": 5.0, "max": 25.0, "default": 10.0, "step": 0.1},
-            "Volume auriculaire gauche indexé": {"type": "number", "min": 15, "max": 60, "default": 30, "step": 1},
-            "Vitesse onde TR maximale": {"type": "number", "min": 1.5, "max": 4.5, "default": 2.5, "step": 0.1}
-        },
-        "additional_parameters": {
-            "E/e' septal": {"type": "number", "min": 5.0, "max": 25.0, "default": 10.0, "step": 0.1},
-            "E/e' latéral": {"type": "number", "min": 5.0, "max": 25.0, "default": 8.0, "step": 0.1},
-            "Rapport E/A": {"type": "number", "min": 0.5, "max": 3.0, "default": 1.2, "step": 0.1}
-        },
-        "invalid_parameters": ["Aucun dans cette situation standard"],
-        "recommendation": """
-        **Algorithme ASE 2016 pour FE VG ≥ 50%:**
-        
-        **PRVG Normale si:**
-        - E/e' moyen ≤ 8 ET Volume OG indexé ≤ 34 ml/m²
-        
-        **PRVG Élevée si:**
-        - E/e' moyen > 14
-        - OU si E/e' moyen 9-14 + ≥2 critères parmi:
-          * E/e' septal > 15
-          * Vitesse TR > 2.8 m/s
-          * Volume OG indexé > 34 ml/m²
-        """,
-        "references": "ASE Guidelines for Diastolic Function 2016",
-        "filling_pressure_possible": "Oui - Bien validé"
-    },
-    
-    "FE VG < 50% - Dysfonction systolique": {
-        "valid_parameters": {
-            "Rapport E/A": {"type": "number", "min": 0.5, "max": 3.0, "default": 1.5, "step": 0.1},
-            "E/e' moyen": {"type": "number", "min": 5.0, "max": 25.0, "default": 15.0, "step": 0.1},
-            "Volume auriculaire gauche indexé": {"type": "number", "min": 15, "max": 60, "default": 40, "step": 1}
-        },
-        "additional_parameters": {
-            "Temps de décélération (DT)": {"type": "number", "min": 120, "max": 300, "default": 180, "step": 5},
-            "Vitesse onde TR maximale": {"type": "number", "min": 1.5, "max": 4.5, "default": 2.8, "step": 0.1}
-        },
-        "invalid_parameters": ["Aucun - Tous paramètres utilisables"],
-        "recommendation": """
-        **Algorithme ASE 2016 pour FE VG < 50%:**
-        
-        **Pattern restrictif (PRVG élevée):**
-        - E/A ≥ 2 + DT < 160 ms
-        - E/e' moyen > 14
-        - Volume OG indexé > 34 ml/m²
-        
-        **Pattern de relaxation altérée (PRVG normale):**
-        - E/A ≤ 0.8 + E ≤ 50 cm/s
-        - E/e' moyen ≤ 14
-        """,
-        "references": "ASE Guidelines for Diastolic Function 2016",
-        "filling_pressure_possible": "Oui - Très bien validé"
+def evaluer_prvg_fevg_preservee(e_e_prime, volume_og, tr_vitesse):
+    """Évaluation dynamique de la PRVG pour FE VG ≥ 50%"""
+    resultats = {
+        "prvg_normale": e_e_prime <= 8 and volume_og <= 34,
+        "prvg_elevee": e_e_prime > 14,
+        "zone_grise": 8 < e_e_prime <= 14,
+        "criteres_secondaires": 0
     }
-}
+    
+    if e_e_prime > 15: resultats["criteres_secondaires"] += 1
+    if tr_vitesse > 2.8: resultats["criteres_secondaires"] += 1
+    if volume_og > 34: resultats["criteres_secondaires"] += 1
+        
+    return resultats
 
-# Dictionnaire des évaluations disponibles
-evaluations = {
-    "Pression Remplissage VG (PRVG)": {
-        "icon": "🫀",
-        "description": "Évaluation de la pression de remplissage VG selon situations cliniques",
-        "reference": "ASE 2016, ESC 2021"
-    },
-    "Dysfonction Diastolique - Algorithme Complet": {
-        "icon": "📊", 
-        "description": "Évaluation complète de la fonction diastolique selon ESC 2016",
-        "reference": "ESC 2016, ASE 2016, JASE 2020"
-    },
-    "Probabilité d'HTAP - ESC 2022": {
-        "icon": "🌊",
-        "description": "Évaluation de la probabilité d'hypertension artérielle pulmonaire",
-        "reference": "ESC/ERS 2022"
-    },
-    "Péricardite Constrictive vs Restrictive": {
-        "icon": "🔄",
-        "description": "Différenciation entre constriction péricardique et cardiomyopathie restrictive",
-        "reference": "ESC 2015, ASE 2021"
-    },
-    "Évaluation Prothèses Valvulaires": {
-        "icon": "⚙️",
-        "description": "Évaluation complète avec bases de données des prothèses",
-        "reference": "ESC 2021, ASE 2017, EACVI 2021"
-    }
-}
-
-# ============================================================================
-# SIDEBAR - SÉLECTION DE L'ÉVALUATION
-# ============================================================================
-
-st.sidebar.title("🔍 Sélection de l'Évaluation")
-evaluation_choice = st.sidebar.selectbox(
-    "Choisir l'évaluation:",
-    list(evaluations.keys()),
-    format_func=lambda x: f"{evaluations[x]['icon']} {x}"
-)
-
-st.sidebar.markdown("---")
-st.sidebar.markdown(f"**Description:** {evaluations[evaluation_choice]['description']}")
-st.sidebar.markdown(f"**Référence:** {evaluations[evaluation_choice]['reference']}")
-
-# ============================================================================
-# ÉVALUATION 1: PRVG
-# ============================================================================
-
-if evaluation_choice == "Pression Remplissage VG (PRVG)":
-    
-    st.markdown("## 🫀 Évaluation de la Pression de Remplissage VG - Guide Situationnel")
-    
-    # Sélection de la situation pour PRVG
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🩺 Situation Clinique")
-    situation = st.sidebar.selectbox(
-        "Choisir la situation clinique:",
-        list(situations_prvg.keys())
-    )
-    
-    # Affichage des paramètres spécifiques
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("📊 Paramètres d'Évaluation")
-    
-    selected_data = situations_prvg[situation]
-    user_inputs = {}
-    
-    # Paramètres valides principaux
-    st.sidebar.markdown("**Paramètres valides pour cette situation:**")
-    for param_name, param_config in selected_data["valid_parameters"].items():
-        if param_config["type"] == "number":
-            user_inputs[param_name] = st.sidebar.number_input(
-                param_name,
-                min_value=param_config["min"],
-                max_value=param_config["max"],
-                value=param_config["default"],
-                step=param_config["step"],
-                key=f"valid_{param_name}"
-            )
-        elif param_config["type"] == "select":
-            user_inputs[param_name] = st.sidebar.selectbox(
-                param_name,
-                param_config["options"],
-                key=f"valid_{param_name}"
-            )
-    
-    # Paramètres additionnels
-    if selected_data.get("additional_parameters"):
-        st.sidebar.markdown("---")
-        st.sidebar.markdown("**Paramètres additionnels:**")
-        for param_name, param_config in selected_data["additional_parameters"].items():
-            if param_config["type"] == "number":
-                user_inputs[param_name] = st.sidebar.number_input(
-                    param_name,
-                    min_value=param_config["min"],
-                    max_value=param_config["max"],
-                    value=param_config["default"],
-                    step=param_config["step"],
-                    key=f"add_{param_name}"
-                )
-            elif param_config["type"] == "select":
-                user_inputs[param_name] = st.sidebar.selectbox(
-                    param_name,
-                    param_config["options"],
-                    key=f"add_{param_name}"
-                )
-    
-    # Affichage principal
-    st.subheader(f"📋 {situation}")
-    
-    # Évaluation de la faisabilité
-    st.markdown("### 📈 Évaluation de la PRVG Possible?")
-    if "NON" in selected_data["filling_pressure_possible"]:
-        st.error(f"**{selected_data['filling_pressure_possible']}**")
-    elif "Avec limitations" in selected_data["filling_pressure_possible"]:
-        st.warning(f"**{selected_data['filling_pressure_possible']}**")
+def evaluer_pattern_diastolique(e_a_ratio, dt, e_vitesse):
+    """Détermination du pattern diastolique"""
+    if e_a_ratio <= 0.8 and e_vitesse <= 50:
+        return "relaxation_alteree", "Pattern de Relaxation Altérée"
+    elif e_a_ratio >= 2 and dt < 160:
+        return "restrictif", "Pattern Restrictif"
     else:
-        st.success(f"**{selected_data['filling_pressure_possible']}**")
-    
-    # Paramètres valides vs invalides
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("### ✅ Paramètres Valides")
-        for param in selected_data["valid_parameters"]:
-            st.markdown(f'<div class="valid-param">✓ {param}</div>', unsafe_allow_html=True)
-        
-        if selected_data.get("additional_parameters"):
-            for param in selected_data["additional_parameters"]:
-                st.markdown(f'<div class="caution-param">↳ {param} (additionnel)</div>', unsafe_allow_html=True)
-    
-    with col2:
-        if selected_data["invalid_parameters"] and selected_data["invalid_parameters"][0] != "Aucun dans cette situation standard":
-            st.markdown("### ❌ Paramètres Non Valides")
-            for param in selected_data["invalid_parameters"]:
-                st.markdown(f'<div class="invalid-param">✗ {param}</div>', unsafe_allow_html=True)
-    
-    # Recommandations
-    st.markdown("### 💡 Recommandations Spécifiques")
-    st.markdown('<div class="recommendation-box">', unsafe_allow_html=True)
-    st.markdown(selected_data["recommendation"])
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Références
-    st.markdown("### 📚 Références")
-    st.info(f"**Sources:** {selected_data['references']}")
+        return "pseudonormal", "Pattern Pseudonormal"
 
-# ============================================================================
-# ÉVALUATION 2: DYSFONCTION DIASTOLIQUE
-# ============================================================================
+def calculer_ppm(eoa_mesuree, surface_corporelle):
+    """Calcul du Patient-Prothèse Mismatch"""
+    eoai = eoa_mesuree / surface_corporelle
+    if eoai < 0.65: return "severe", eoai
+    elif eoai < 0.85: return "modere", eoai
+    else: return "absent", eoai
 
-elif evaluation_choice == "Dysfonction Diastolique - Algorithme Complet":
+def evaluer_risque_thrombose(categorie, fevg, fa, antecedent_te, inr):
+    """Évaluation du risque de thrombose"""
+    score = 0
+    if "Mécanique" in categorie: score += 2
+    if fevg < 40: score += 1
+    if fa: score += 1
+    if antecedent_te: score += 2
+    if inr < 2.0: score += 2
     
-    st.markdown("## 🫀 Évaluation de la Dysfonction Diastolique - Algorithme Complet ESC")
-    
-    with st.expander("📋 **Paramètres à mesurer - Guide pratique**", expanded=True):
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("""
-            **📏 Doppler pulsé mitral:**
-            - Vitesse onde E (pic précoce)
-            - Vitesse onde A (contraction auriculaire)  
-            - Rapport E/A
-            - Temps de décélération (DT)
-            - Temps de relaxation isovolumétrique (IVRT)
-            
-            **🎯 Doppler tissulaire:**
-            - e' septal (annulus mitral)
-            - e' latéral (annulus mitral)
-            - Rapport E/e' moyen
-            - Rapport E/e' septal
-            """)
-            
-        with col2:
-            st.markdown("""
-            **📊 Paramètres structurels:**
-            - Volume oreillette gauche indexé (ml/m²)
-            - Masse VG indexée (g/m²)
-            - Diamètre OG (mm)
-            
-            **🌀 Paramètres avancés (souvent oubliés):**
-            - Ratio S/D flux pulmonaire
-            - Durée Ar - A (différence durée onde Ar et A)
-            - Vitesse de propagation (Vp) - Doppler couleur
-            - Temps de relaxation VG en TDI
-            - Strain longitudinal global
-            """)
-    
-    # Paramètres d'entrée
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("📊 Paramètres du Patient")
-    
-    fevg = st.sidebar.selectbox("FE VG (%)", ["≥50%", "41-49%", "≤40%"])
-    age = st.sidebar.number_input("Âge (années)", 20, 100, 65)
-    
-    st.sidebar.markdown("**Paramètres Doppler:**")
-    e_vitesse = st.sidebar.number_input("Vitesse E (cm/s)", 20, 200, 80)
-    a_vitesse = st.sidebar.number_input("Vitesse A (cm/s)", 20, 150, 70)
-    e_a_ratio = st.sidebar.number_input("Rapport E/A", 0.5, 3.0, 1.2, 0.1)
-    dt = st.sidebar.number_input("Temps décélération (ms)", 100, 400, 180)
-    
-    st.sidebar.markdown("**Doppler tissulaire:**")
-    e_prime_septal = st.sidebar.number_input("e' septal (cm/s)", 3.0, 20.0, 7.0, 0.1)
-    e_prime_lateral = st.sidebar.number_input("e' latéral (cm/s)", 3.0, 20.0, 9.0, 0.1)
-    e_e_prime_moyen = st.sidebar.number_input("E/e' moyen", 5.0, 25.0, 10.0, 0.1)
-    
-    st.sidebar.markdown("**Paramètres structurels:**")
-    volume_og_index = st.sidebar.number_input("Volume OG indexé (ml/m²)", 15, 80, 35)
-    tr_vitesse = st.sidebar.number_input("Vitesse TR max (m/s)", 1.5, 4.5, 2.5, 0.1)
-    
-    # Algorithme de décision
-    st.markdown("## 🔍 **Algorithme d'Interprétation ESC 2016**")
-    
-    if fevg == "≥50%":
-        st.markdown("### **FE VG Préservée (≥50%)**")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("**Critères PRVG Normale:**")
-            if e_e_prime_moyen <= 8 and volume_og_index <= 34:
-                st.markdown('<div class="success-box">✅ PRVG NORMALE<br>E/e\' moyen ≤8 + Volume OG ≤34 ml/m²</div>', unsafe_allow_html=True)
-            else:
-                st.markdown('<div class="danger-box">❌ Non rempli</div>', unsafe_allow_html=True)
-                
-        with col2:
-            st.markdown("**Critères PRVG Élevée:**")
-            if e_e_prime_moyen > 14:
-                st.markdown('<div class="danger-box">✅ PRVG ÉLEVÉE<br>E/e\' moyen >14</div>', unsafe_allow_html=True)
-            elif e_e_prime_moyen > 8 and e_e_prime_moyen <= 14:
-                st.markdown("**Zone grise - Évaluer critères secondaires:**")
-                criteres = 0
-                if e_prime_septal < 7: criteres += 1
-                if tr_vitesse > 2.8: criteres += 1
-                if volume_og_index > 34: criteres += 1
-                
-                if criteres >= 2:
-                    st.markdown(f'<div class="danger-box">✅ PRVG ÉLEVÉE<br>{criteres}/3 critères positifs</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown(f'<div class="warning">⚠️ Indéterminé<br>{criteres}/3 critères positifs</div>', unsafe_allow_html=True)
-    
-    else:  # FE VG réduite
-        st.markdown("### **FE VG Réduite (<50%)**")
-        
-        # Classification des patterns
-        if e_a_ratio <= 0.8 and e_vitesse <= 50:
-            st.markdown('<div class="success-box">📊 **Pattern de Relaxation Altérée**<br>PRVG probablement normale</div>', unsafe_allow_html=True)
-        elif e_a_ratio >= 2 and dt < 160:
-            st.markdown('<div class="danger-box">📊 **Pattern Restrictif**<br>PRVG élevée</div>', unsafe_allow_html=True)
-        else:
-            st.markdown('<div class="warning">📊 **Pattern Pseudonormal**<br>Évaluer E/e\' et volume OG</div>', unsafe_allow_html=True)
-    
-    # Paramètres avancés souvent oubliés
-    st.markdown("## 🔬 **Paramètres Avancés - Souvent Oubliés**")
-    
-    with st.expander("📐 **Comment mesurer les paramètres avancés**"):
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("""
-            **📏 Ratio S/D flux pulmonaire:**
-            - Mesurer en Doppler pulsé veines pulmonaires
-            - Ondes S (systolique) et D (diastolique)
-            - **Interprétation:**
-              * S/D < 1 → PRVG élevée
-              * S/D > 1 → Normal
-            
-            **⏱️ Durée Ar - A:**
-            - Mesurer durée onde Ar (flux pulmonaire rétrograde)
-            - Mesurer durée onde A (flux mitral)
-            - **Interprétation:**
-              * Ar-A > 30 ms → PRVG élevée
-            """)
-            
-        with col2:
-            st.markdown("""
-            **🌀 Vitesse de propagation (Vp):**
-            - Mode M couleur avec ligne de base mitral
-            - Mesurer pente de propagation première onde diastolique
-            - **Interprétation:**
-              * Vp < 45 cm/s → Dysfonction diastolique
-            
-            **📉 Strain diastolique:**
-            - Strain rate précoce diastolique
-            - **Interprétation:**
-              * SR E < 1.0 s⁻¹ → Dysfonction diastolique
-            """)
-    
-    st.markdown("### **Valeurs Seuils Recommandées**")
-    
-    data = {
-        "Paramètre": ["E/e' septal", "E/e' latéral", "Volume OG indexé", "Vitesse TR", "Rapport S/D pulmonaire", "Ar-A durée"],
-        "Normal": ["≤8", "≤8", "≤34 ml/m²", "≤2.8 m/s", ">1", "<30 ms"],
-        "Anormal": [">15", ">12", ">34 ml/m²", ">2.8 m/s", "<1", ">30 ms"]
-    }
-    
-    st.table(data)
+    if score >= 5: return "eleve", score
+    elif score >= 3: return "modere", score
+    else: return "faible", score
 
-# ============================================================================
-# ÉVALUATION 3: PROBABILITÉ HTAP ESC 2022
-# ============================================================================
-
-elif evaluation_choice == "Probabilité d'HTAP - ESC 2022":
-    
-    st.markdown("## 🌊 Probabilité d'Hypertension Artérielle Pulmonaire - ESC/ERS 2022")
-    
-    st.markdown("""
-    <div class="recommendation-box">
-    <strong>📋 Définition HTAP:</strong> PAPm ≥20 mmHg au repos + PVR ≥3 UW + PCP ≤15 mmHg<br>
-    <strong>⚠️ Attention:</strong> Ces algorithmes donnent une probabilité, pas un diagnostic définitif
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Paramètres d'entrée COMPLETS
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("📊 Paramètres Échocardiographiques Complets")
-    
-    # Groupe 1: Paramètres principaux
-    st.sidebar.markdown("**🎯 Paramètres principaux:**")
-    tr_vitesse = st.sidebar.number_input("Vitesse TR maximale (m/s)", 1.5, 5.0, 2.8, 0.1)
-    paps = st.sidebar.number_input("PAP systolique (mmHg)", 15, 120, 40)
-    vc_diametre = st.sidebar.number_input("Diamètre VCI (mm)", 10, 30, 17)
-    vc_collapsus = st.sidebar.number_input("Collapsus VCI (%)", 0, 100, 50)
-    rv_ra_ratio = st.sidebar.selectbox("Rapport VD/OG (apical 4 cavités)", ["<0.6", "0.6-1.0", "≥1.0"])
-    
-    # Groupe 2: Paramètres VD
-    st.sidebar.markdown("**📊 Fonction VD:**")
-    tapse = st.sidebar.number_input("TAPSE (mm)", 5, 25, 20)
-    s_tricuspide = st.sidebar.number_input("S' tricuspide (cm/s)", 5.0, 15.0, 12.0, 0.1)
-    fac_vd = st.sidebar.number_input("FAC VD (%)", 20, 60, 45)
-    strain_vd = st.sidebar.number_input("Strain longitudinal VD (%)", -30, -10, -22)
-    rimp_vd = st.sidebar.number_input("Index de performance VD (RIMP)", 0.2, 1.5, 0.4, 0.1)
-    
-    # Groupe 3: Paramètres artère pulmonaire
-    st.sidebar.markdown("**📈 Artère pulmonaire:**")
-    acceleration_time = st.sidebar.number_input("Temps d'accélération VTID (ms)", 40, 120, 80)
-    diam_ap = st.sidebar.number_input("Diamètre artère pulmonaire (mm)", 15, 40, 25)
-    notch_mesosystolique = st.sidebar.selectbox("Notch mésosystolique VTID", ["Absent", "Présent"])
-    pvr_estimee = st.sidebar.number_input("PVR estimée (UW)", 1.0, 15.0, 2.5, 0.1)
-    
-    # Groupe 4: Paramètres supplémentaires
-    st.sidebar.markdown("**🔍 Paramètres supplémentaires:**")
-    septum_paradoxal = st.sidebar.selectbox("Mouvement septum paradoxal", ["Absent", "Présent"])
-    gradient_diastolique_pulmonaire = st.sidebar.number_input("Gradient diastolique pulm (mmHg)", 0, 30, 5)
-    diam_og = st.sidebar.number_input("Diamètre OG (mm)", 30, 60, 40)
-    
-    # Calculs automatiques
-    st.markdown("## 🎯 **Algorithme Probabilité HTAP - Patients sans Cardiopathie Gauche**")
-    
-    # Score principal ESC 2022
-    score_principal = 0
+def calculer_probabilite_htap(tr_vitesse, vc_diametre, vc_collapsus, rv_ra_ratio, septum_paradoxal):
+    """Calcul du score de probabilité HTAP ESC 2022"""
+    score = 0
     
     # Vitesse TR
-    if tr_vitesse <= 2.8 or tr_vitesse == 2.9:
-        score_principal += 0
-    elif 3.0 <= tr_vitesse <= 3.4:
-        score_principal += 1
-    else:
-        score_principal += 2
+    if tr_vitesse <= 2.8 or tr_vitesse == 2.9: score += 0
+    elif 3.0 <= tr_vitesse <= 3.4: score += 1
+    else: score += 2
     
     # VCI
-    if vc_diametre <= 21 and vc_collapsus > 50:
-        score_principal += 0
-    elif vc_diametre > 21 or vc_collapsus <= 50:
-        score_principal += 1
-    else:
-        score_principal += 2
+    if vc_diametre <= 21 and vc_collapsus > 50: score += 0
+    elif vc_diametre > 21 or vc_collapsus <= 50: score += 1
+    else: score += 2
     
     # Ratio VD/OG
-    if rv_ra_ratio == "<0.6":
-        score_principal += 0
-    elif rv_ra_ratio == "0.6-1.0":
-        score_principal += 1
-    else:
-        score_principal += 2
+    if rv_ra_ratio == "<0.6": score += 0
+    elif rv_ra_ratio == "0.6-1.0": score += 1
+    else: score += 2
     
     # Septum paradoxal
-    if septum_paradoxal == "Présent":
-        score_principal += 1
+    if septum_paradoxal == "Présent": score += 1
     
-    # Score secondaire (paramètres de confirmation)
-    score_secondaire = 0
-    if tapse < 17: score_secondaire += 1
-    if s_tricuspide < 9.5: score_secondaire += 1
-    if fac_vd < 35: score_secondaire += 1
-    if acceleration_time < 80: score_secondaire += 1
-    if notch_mesosystolique == "Présent": score_secondaire += 1
-    if pvr_estimee > 3: score_secondaire += 1
-    
-    # Interprétation
-    st.markdown(f"### **Score de probabilité principal: {score_principal}/7 points**")
-    st.markdown(f"### **Score de confirmation secondaire: {score_secondaire}/6 points**")
-    
-    # Décision
-    if score_principal <= 1:
-        st.markdown('<div class="success-box">🟢 **PROBABILITÉ FAIBLE**<br>Score principal ≤1 - HTAP peu probable</div>', unsafe_allow_html=True)
-    elif score_principal == 2:
-        if score_secondaire >= 2:
-            st.markdown('<div class="warning">🟡 **PROBABILITÉ INTERMÉDIAIRE**<br>Score principal = 2 + signes secondaires → Investigations nécessaires</div>', unsafe_allow_html=True)
-        else:
-            st.markdown('<div class="success-box">🟢 **PROBABILITÉ FAIBLE**<br>Score principal = 2 mais peu de signes secondaires</div>', unsafe_allow_html=True)
-    else:
-        st.markdown('<div class="danger-box">🔴 **PROBABILITÉ ÉLEVÉE**<br>Score principal ≥3 - HTAP probable, cathétérisme recommandé</div>', unsafe_allow_html=True)
-    
-    # Tableau détaillé des paramètres
-    st.markdown("## 📊 **Analyse Détaillée des Paramètres**")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("**📈 Paramètres Principaux:**")
-        data_principaux = {
-            "Paramètre": ["Vitesse TR", "PAPs", "VCI diam/collapsus", "VD/OG ratio", "Septum paradoxal"],
-            "Valeur": [f"{tr_vitesse} m/s", f"{paps} mmHg", f"{vc_diametre} mm/{vc_collapsus}%", rv_ra_ratio, septum_paradoxal],
-            "Interprétation": [
-                "Normal" if tr_vitesse <= 2.8 else "Élevé" if tr_vitesse <= 3.4 else "Très élevé",
-                "Normal" if paps <= 35 else "Élevé" if paps <= 50 else "Très élevé",
-                "Normal" if vc_diametre <= 21 and vc_collapsus > 50 else "Anormal",
-                "Normal" if rv_ra_ratio == "<0.6" else "Limite" if rv_ra_ratio == "0.6-1.0" else "Anormal",
-                "Normal" if septum_paradoxal == "Absent" else "Anormal"
-            ]
-        }
-        st.dataframe(pd.DataFrame(data_principaux))
-    
-    with col2:
-        st.markdown("**📊 Paramètres Secondaires:**")
-        data_secondaires = {
-            "Paramètre": ["TAPSE", "S' tricuspide", "FAC VD", "Temps accélération", "PVR estimée"],
-            "Valeur": [f"{tapse} mm", f"{s_tricuspide} cm/s", f"{fac_vd}%", f"{acceleration_time} ms", f"{pvr_estimee} UW"],
-            "Interprétation": [
-                "Normal" if tapse >= 17 else "Altéré",
-                "Normal" if s_tricuspide >= 9.5 else "Altéré",
-                "Normal" if fac_vd >= 35 else "Altéré",
-                "Normal" if acceleration_time >= 80 else "Court",
-                "Normal" if pvr_estimee <= 3 else "Élevée"
-            ]
-        }
-        st.dataframe(pd.DataFrame(data_secondaires))
+    return score
 
-# ============================================================================
-# ÉVALUATION 4: PÉRICARDITE CONSTRICTIVE vs RESTRICTIVE
-# ============================================================================
-
-elif evaluation_choice == "Péricardite Constrictive vs Restrictive":
-    
-    st.markdown("## 🔄 Différenciation Péricardite Constrictive vs Cardiomyopathie Restrictive")
-    
-    st.markdown("""
-    <div class="warning">
-    <strong>⚠️ Définition:</strong><br>
-    • <strong>Constriction péricardique:</strong> Péricarde rigide limitant le remplissage diastolique<br>
-    • <strong>Cardiomyopathie restrictive:</strong> Myocarde rigide avec compliance réduite
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Paramètres d'entrée COMPLETS
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("📊 Critères Différentiels Complets")
-    
-    st.sidebar.markdown("**🔄 Paramètres respiratoires:**")
-    variation_respiratoire = st.sidebar.selectbox("Variation respiratoire flux mitral E", ["<10%", "10-25%", "≥25%"])
-    variation_tricuspide = st.sidebar.selectbox("Variation respiratoire flux tricuspide", ["<15%", "15-40%", "≥40%"])
-    augmentation_inspiratoire_tr = st.sidebar.selectbox("Augmentation inspiratoire onde TR", ["Absente", "Présente"])
-    
-    st.sidebar.markdown("**📐 Paramètres structuraux:**")
-    septal_bounce = st.sidebar.selectbox("Mouvement septal paradoxal", ["Absent", "Présent"])
-    annulus_reverse = st.sidebar.selectbox("Annulus paradoxal (e' latéral > e' septal)", ["Non", "Oui"])
-    epaisseur_pericarde = st.sidebar.selectbox("Épaisseur péricarde", ["Normal (<3 mm)", "Épaissi (3-5 mm)", "Très épaissi (>5 mm)", "Calcifié"])
-    dilatation_veine_cave = st.sidebar.selectbox("Dilatation veine cave", ["Absente", "Modérée", "Sévère"])
-    
-    st.sidebar.markdown("**📊 Paramètres fonctionnels:**")
-    vp_couleur = st.sidebar.number_input("Vitesse propagation Vp (cm/s)", 30, 80, 45)
-    strain_longitudinal = st.sidebar.number_input("Strain longitudinal global (%)", -25, -10, -18)
-    fonction_vg = st.sidebar.selectbox("Fonction VG systolique", ["Normale", "Légèrement altérée", "Modérément altérée", "Sévèrement altérée"])
-    fonction_vd = st.sidebar.selectbox("Fonction VD", ["Normale", "Altérée"])
-    
-    st.sidebar.markdown("**🔍 Paramètres avancés:**")
-    rapport_e_e_prime = st.sidebar.number_input("Rapport E/e' moyen", 5.0, 25.0, 12.0, 0.1)
-    temps_relaxation_vg = st.sidebar.number_input("Temps relaxation VG (ms)", 40, 120, 65)
-    flux_hepatique = st.sidebar.selectbox("Flux hépatique diastolique", ["Normal", "Inversion expiratoire", "Inversion continu"])
-    
-    # Algorithme de décision COMPLET
-    st.markdown("## 🎯 **Arbre Décisionnel ASE 2021 Révisé**")
-    
+def evaluer_constrictive_restrictive(variation_respiratoire, septal_bounce, annulus_reverse, fonction_vg, strain_longitudinal):
+    """Évaluation différentielle constrictive vs restrictive"""
     score_constriction = 0
     score_restrictif = 0
     
-    # Critères constriction majeurs (2 points chacun)
+    # Critères constriction
     if variation_respiratoire == "≥25%": score_constriction += 2
     if septal_bounce == "Présent": score_constriction += 2
     if annulus_reverse == "Oui": score_constriction += 2
-    if epaisseur_pericarde in ["Très épaissi (>5 mm)", "Calcifié"]: score_constriction += 2
     
-    # Critères constriction mineurs (1 point chacun)
-    if variation_tricuspide == "≥40%": score_constriction += 1
-    if augmentation_inspiratoire_tr == "Présente": score_constriction += 1
-    if dilatation_veine_cave in ["Modérée", "Sévère"]: score_constriction += 1
-    if flux_hepatique in ["Inversion expiratoire", "Inversion continu"]: score_constriction += 1
-    
-    # Critères restrictif majeurs (2 points chacun)
+    # Critères restrictif
     if fonction_vg in ["Modérément altérée", "Sévèrement altérée"]: score_restrictif += 2
     if strain_longitudinal > -15: score_restrictif += 2
-    if rapport_e_e_prime > 15: score_restrictif += 1
     
-    # Critères restrictif mineurs (1 point chacun)
-    if variation_respiratoire == "<10%": score_restrictif += 1
-    if fonction_vd == "Altérée": score_restrictif += 1
-    if vp_couleur < 40: score_restrictif += 1
-    
-    st.markdown(f"### **Score Constriction: {score_constriction}/11**")
-    st.markdown(f"### **Score Restrictif: {score_restrictif}/7**")
-    
-    # Diagnostic
-    if score_constriction >= 4 and score_constriction > score_restrictif:
-        st.markdown('<div class="danger-box">🎯 **CONSTRICTION PÉRICARDIQUE PROBABLE**<br>Score élevé pour constriction</div>', unsafe_allow_html=True)
-        if score_constriction >= 6:
-            st.markdown('<div class="critical-param">🔴 **CONSTRICTION PÉRICARDIQUE FORTEMENT PROBABLE**<br>Score très élevé</div>', unsafe_allow_html=True)
-    elif score_restrictif >= 3 and score_restrictif > score_constriction:
-        st.markdown('<div class="danger-box">🎯 **CARDIOMYOPATHIE RESTRICTIVE PROBABLE**<br>Score élevé pour restriction</div>', unsafe_allow_html=True)
+    return score_constriction, score_restrictif
+
+def evaluer_dysfonction_diastolique_complete(e_a_ratio, e_e_prime, volume_og, tr_vitesse, dt, e_vitesse, fevg):
+    """Évaluation complète de la fonction diastolique"""
+    if fevg == "≥50%":
+        return evaluer_prvg_fevg_preservee(e_e_prime, volume_og, tr_vitesse)
     else:
-        st.markdown('<div class="warning">⚠️ **DIAGNOSTIC INDÉTERMINÉ**<br>Rechercher d\'autres causes ou imagerie complémentaire (IRM, scanner)</div>', unsafe_allow_html=True)
-    
-    # Tableau comparatif détaillé
-    st.markdown("## 📊 **Tableau Comparatif Complet des Critères**")
-    
-    data_comparatif = {
-        "Paramètre": ["Variation respiratoire E mitral", "Mouvement septum", "Annulus mitral", "Épaisseur péricarde", "Fonction VG", "Strain longitudinal", "Flux hépatique", "Dilatation VCI"],
-        "Constriction": ["≥25%", "Bounce paradoxal", "e' latéral > e' septal", "Épaissi/calcifié", "Préservée", "Relativement préservé", "Inversion expiratoire", "Fréquente"],
-        "Restrictive": ["<10%", "Normal ou réduit", "e' latéral ≈ e' septal", "Normal", "Altérée", "Altéré (≥ -15%)", "Normal", "Variable"]
-    }
-    
-    st.table(data_comparatif)
+        pattern, libelle = evaluer_pattern_diastolique(e_a_ratio, dt, e_vitesse)
+        return {"pattern": pattern, "libelle": libelle}
 
 # ============================================================================
-# ÉVALUATION 5: PROTHÈSES VALVULAIRES - COMPLÈTE AVEC BASES DE DONNÉES
+# INTERFACE PRINCIPALE COMPLÈTE
 # ============================================================================
 
-elif evaluation_choice == "Évaluation Prothèses Valvulaires":
-    
-    st.markdown("## ⚙️ Évaluation des Prothèses Valvulaires - Base de Données Complète")
-    
-    # Sélection du type de prothèse
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🔧 Type de Prothèse")
-    
-    type_general = st.sidebar.selectbox("Type général", ["Prothèse aortique", "Prothèse mitrale"])
-    
-    if type_general == "Prothèse aortique":
-        categorie = st.sidebar.selectbox("Catégorie", list(protheses_aortiques.keys()))
-        marque = st.sidebar.selectbox("Marque/Modèle", list(protheses_aortiques[categorie].keys()))
-        tailles_disponibles = list(protheses_aortiques[categorie][marque].keys())
-        taille = st.sidebar.selectbox("Taille (mm)", tailles_disponibles)
-        
-        # Récupération des valeurs théoriques
-        donnees_theoriques = protheses_aortiques[categorie][marque][taille]
-        eoa_theorique = donnees_theoriques["EOA_théorique"]
-        gradient_theorique = donnees_theoriques["Gradient_moyen_normal"]
-        
-    else:  # Prothèse mitrale
-        categorie = st.sidebar.selectbox("Catégorie", list(protheses_mitrales.keys()))
-        marque = st.sidebar.selectbox("Marque/Modèle", list(protheses_mitrales[categorie].keys()))
-        tailles_disponibles = list(protheses_mitrales[categorie][marque].keys())
-        taille = st.sidebar.selectbox("Taille (mm)", tailles_disponibles)
-        
-        # Récupération des valeurs théoriques
-        donnees_theoriques = protheses_mitrales[categorie][marque][taille]
-        eoa_theorique = donnees_theoriques["EOA_théorique"]
-        gradient_theorique = donnees_theoriques["Gradient_moyen_normal"]
-    
-    # Affichage des valeurs théoriques
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("📐 Valeurs Théoriques")
-    st.sidebar.markdown(f"**EOA théorique:** {eoa_theorique} cm²")
-    st.sidebar.markdown(f"**Gradient moyen normal:** {gradient_theorique} mmHg")
-    
-    # Paramètres hémodynamiques mesurés
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("📊 Paramètres Mesurés")
-    
-    if type_general == "Prothèse aortique":
-        gradient_moyen_mesure = st.sidebar.number_input("Gradient moyen mesuré (mmHg)", 5, 60, 15)
-        vmax = st.sidebar.number_input("Vitesse max (m/s)", 1.5, 5.0, 2.5, 0.1)
-        eoa_mesuree = st.sidebar.number_input("EOA mesurée (cm²)", 0.5, 3.0, eoa_theorique, 0.1)
-        dvi = st.sidebar.number_input("Index de performance (DVI)", 0.1, 0.5, 0.35, 0.01)
-        acceleration_time = st.sidebar.number_input("Temps accélération (ms)", 50, 150, 90)
-    else:
-        gradient_moyen_mesure = st.sidebar.number_input("Gradient moyen mesuré (mmHg)", 2, 15, 5)
-        pht = st.sidebar.number_input("Temps pression-demi (ms)", 50, 300, 120)
-        eoa_mesuree = st.sidebar.number_input("EOA mesurée (cm²)", 0.5, 3.0, eoa_theorique, 0.1)
-        pression_og_estimee = st.sidebar.number_input("Pression OG estimée (mmHg)", 5, 40, 15)
-    
-    # Paramètres communs
-    st.sidebar.markdown("**🔄 Régurgitation:**")
-    regurgitation = st.sidebar.selectbox("Régurgitation para-valvulaire", ["Absente", "Légère", "Modérée", "Sévère"])
-    localisation_regurgitation = st.sidebar.selectbox("Localisation fuite", ["Para-valvulaire", "Intra-prothétique", "Mixte"])
-    
-    st.sidebar.markdown("**📊 Fonction cardiaque:**")
-    fevg = st.sidebar.number_input("FE VG (%)", 20, 70, 55)
-    pap_systolique = st.sidebar.number_input("PAP systolique (mmHg)", 15, 100, 35)
-    
-    # Algorithme d'évaluation COMPLET
-    st.markdown(f"## 🔍 **Évaluation de la {marque} {taille}mm ({categorie})**")
-    
-    # Étape 1: Comparaison avec valeurs théoriques
-    st.markdown("### 📋 **Étape 1: Comparaison avec Valeurs Théoriques**")
-    
-    ratio_eoa = (eoa_mesuree / eoa_theorique) * 100
-    gradient_min, gradient_max = map(int, gradient_theorique.split('-'))
-    gradient_dans_normes = gradient_min <= gradient_moyen_mesure <= gradient_max
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric("EOA mesurée/théorique", f"{ratio_eoa:.1f}%")
-        if ratio_eoa >= 80:
-            st.success("✅ Excellent match")
-        elif ratio_eoa >= 65:
-            st.warning("🟡 Match acceptable")
-        else:
-            st.error("🔴 Mismatch significatif")
+st.markdown('<div class="main-header">🫀 ÉCHOCARDIOGRAPHIE EXPERT - GUIDE DYNAMIQUE COMPLET</div>', unsafe_allow_html=True)
+
+# ============================================================================
+# SIDEBAR DE NAVIGATION COMPLÈTE
+# ============================================================================
+
+st.sidebar.title("🧭 NAVIGATION")
+evaluation_choice = st.sidebar.radio(
+    "CHOISIR L'ÉVALUATION:",
+    ["🏠 Accueil", 
+     "🫀 Pression Remplissage VG", 
+     "📊 Dysfonction Diastolique Complète",
+     "🌊 Probabilité HTAP ESC 2022",
+     "🔄 Constrictive vs Restrictive",
+     "⚙️ Prothèses Valvulaires"]
+)
+
+# Section informations patient
+st.sidebar.markdown("---")
+st.sidebar.subheader("👤 INFORMATIONS PATIENT")
+patient_id = st.sidebar.text_input("ID Patient", "PAT-2024-001")
+age = st.sidebar.slider("Âge", 20, 100, 65)
+sexe = st.sidebar.selectbox("Sexe", ["Masculin", "Féminin"])
+surface_corporelle = st.sidebar.slider("Surface corporelle (m²)", 1.4, 2.5, 1.8, 0.1)
+
+# ============================================================================
+# PAGE ACCUEIL COMPLÈTE
+# ============================================================================
+
+if evaluation_choice == "🏠 Accueil":
+    col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        st.metric("Gradient moyen", f"{gradient_moyen_mesure} mmHg")
-        if gradient_dans_normes:
-            st.success(f"✅ Dans normes ({gradient_theorique})")
-        else:
-            st.error(f"🔴 Hors normes ({gradient_theorique})")
+        st.markdown("""
+        <div style='text-align: center; padding: 3rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    color: white; border-radius: 20px; margin: 2rem 0;'>
+            <h1>🫀 BIENVENUE</h1>
+            <p style='font-size: 1.3rem;'>Guide Échocardiographique Complet avec Feedback Dynamique</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Métriques rapides
+    st.markdown("### 📈 ÉVALUATIONS DISPONIBLES")
+    
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    with col1:
+        st.markdown("""
+        <div class="metric-card">
+            <h3>🫀 PRVG</h3>
+            <p>Pression Remplissage VG</p>
+            <p style='font-size: 0.9rem; color: #666;'>Algorithmes situationnels</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div class="metric-card">
+            <h3>📊 Diastolique</h3>
+            <p>Fonction Diastolique</p>
+            <p style='font-size: 0.9rem; color: #666;'>Évaluation complète</p>
+        </div>
+        """, unsafe_allow_html=True)
     
     with col3:
-        if type_general == "Prothèse aortique":
-            st.metric("DVI", f"{dvi:.2f}")
-            if dvi >= 0.30:
-                st.success("✅ Normal")
-            elif dvi >= 0.25:
-                st.warning("🟡 Limite")
-            else:
-                st.error("🔴 Anormal")
+        st.markdown("""
+        <div class="metric-card">
+            <h3>🌊 HTAP</h3>
+            <p>Hypertension Pulmonaire</p>
+            <p style='font-size: 0.9rem; color: #666;'>ESC 2022</p>
+        </div>
+        """, unsafe_allow_html=True)
     
-    # Étape 2: Classification de la performance
-    st.markdown("### 🎯 **Étape 2: Classification de la Performance**")
+    with col4:
+        st.markdown("""
+        <div class="metric-card">
+            <h3>🔄 Péricarde</h3>
+            <p>Diagnostic Différentiel</p>
+            <p style='font-size: 0.9rem; color: #666;'>Constrictive vs Restrictive</p>
+        </div>
+        """, unsafe_allow_html=True)
     
-    if type_general == "Prothèse aortique":
-        # Critères pour prothèse aortique
-        st.markdown("**🔍 Critères ESC 2021 pour Prothèse Aortique:**")
-        
-        performance = "Fonction normale"
-        severite = "success"
-        
-        if gradient_moyen_mesure > 35 and eoa_mesuree < 1.0 and dvi < 0.25 and ratio_eoa < 50:
-            performance = "Dysfonction sévère"
-            severite = "error"
-        elif (gradient_moyen_mesure > 20 or eoa_mesuree < 1.2 or dvi < 0.30 or ratio_eoa < 65) and not gradient_dans_normes:
-            performance = "Dysfonction modérée"
-            severite = "warning"
-        elif not gradient_dans_normes or ratio_eoa < 80:
-            performance = "Dysfonction légère"
-            severite = "warning"
-        
-        if severite == "error":
-            st.error(f"🔴 **{performance}**")
-        elif severite == "warning":
-            st.warning(f"🟡 **{performance}**")
-        else:
-            st.success(f"🟢 **{performance}**")
-            
-    else:
-        # Critères pour prothèse mitrale
-        st.markdown("**🔍 Critères ASE 2017 pour Prothèse Mitrale:**")
-        
-        performance = "Fonction normale"
-        severite = "success"
-        
-        if gradient_moyen_mesure > 10 and eoa_mesuree < 1.0 and ratio_eoa < 50:
-            performance = "Dysfonction sévère"
-            severite = "error"
-        elif (gradient_moyen_mesure > 7 or eoa_mesuree < 1.3 or ratio_eoa < 65) and not gradient_dans_normes:
-            performance = "Dysfonction modérée"
-            severite = "warning"
-        elif not gradient_dans_normes or ratio_eoa < 80:
-            performance = "Dysfonction légère"
-            severite = "warning"
-        
-        if severite == "error":
-            st.error(f"🔴 **{performance}**")
-        elif severite == "warning":
-            st.warning(f"🟡 **{performance}**")
-        else:
-            st.success(f"🟢 **{performance}**")
+    with col5:
+        st.markdown("""
+        <div class="metric-card">
+            <h3>⚙️ Prothèses</h3>
+            <p>Valvulaires</p>
+            <p style='font-size: 0.9rem; color: #666;'>Base de données complète</p>
+        </div>
+        """, unsafe_allow_html=True)
     
-    # Étape 3: Recherche de complications spécifiques
-    st.markdown("### 🔬 **Étape 3: Recherche de Complications**")
+    # Section d'information
+    st.markdown("---")
+    st.markdown("### 💡 COMMENT UTILISER CETTE APPLICATION")
     
-    with st.expander("📋 **Diagnostics différentiels selon le pattern hémodynamique**"):
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("**📈 Gradient ↑ + EOA ↓:**")
-            st.markdown("- **Thrombose:** Augmentation rapide des gradients")
-            st.markdown("- **Pannus:** Augmentation progressive + EOA réduite")
-            st.markdown("- **Endocardite:** Nouveaux gradients + végétations")
-            st.markdown("- **Dégénérescence:** Calcifications progressives")
-            
-        with col2:
-            st.markdown("**📉 Gradient normal + EOA ↓:**")
-            st.markdown("- **Mismatch patient-prothèse**")
-            st.markdown("- **Dysfonction VG**")
-            st.markdown("- **Débit cardiaque bas**")
-            st.markdown("- **Sténose sub-valvulaire**")
+    col_info1, col_info2, col_info3 = st.columns(3)
     
-    # Étape 4: Tableau récapitulatif
-    st.markdown("### 📊 **Étape 4: Tableau Récapitulatif**")
+    with col_info1:
+        st.markdown("""
+        <div class="patient-info">
+            <h4>🎯 1. Sélectionnez l'évaluation</h4>
+            <p>Choisissez l'évaluation souhaitée dans le menu de navigation</p>
+        </div>
+        """, unsafe_allow_html=True)
     
-    if type_general == "Prothèse aortique":
-        data_recap = {
-            "Paramètre": ["Marque/Modèle", "Taille", "EOA théorique", "EOA mesurée", "Ratio EOA", 
-                         "Gradient théorique", "Gradient mesuré", "DVI", "Performance"],
-            "Valeur": [marque, f"{taille} mm", f"{eoa_theorique} cm²", f"{eoa_mesuree} cm²", f"{ratio_eoa:.1f}%",
-                      gradient_theorique, f"{gradient_moyen_mesure} mmHg", f"{dvi:.2f}", performance]
-        }
-    else:
-        data_recap = {
-            "Paramètre": ["Marque/Modèle", "Taille", "EOA théorique", "EOA mesurée", "Ratio EOA", 
-                         "Gradient théorique", "Gradient mesuré", "PHT", "Performance"],
-            "Valeur": [marque, f"{taille} mm", f"{eoa_theorique} cm²", f"{eoa_mesuree} cm²", f"{ratio_eoa:.1f}%",
-                      gradient_theorique, f"{gradient_moyen_mesure} mmHg", f"{pht} ms", performance]
-        }
+    with col_info2:
+        st.markdown("""
+        <div class="patient-info">
+            <h4>📊 2. Entrez les paramètres</h4>
+            <p>Utilisez les sliders et menus déroulants pour saisir les valeurs</p>
+        </div>
+        """, unsafe_allow_html=True)
     
-    st.table(pd.DataFrame(data_recap))
-    
-    # Bases de données consultables
-    st.markdown("### 🗃️ **Bases de Données des Prothèses**")
-    
-    with st.expander("📋 Consulter la base de données aortique"):
-        for categorie_db, marques in protheses_aortiques.items():
-            st.markdown(f"**{categorie_db}:**")
-            for marque_db, tailles in marques.items():
-                st.markdown(f"- {marque_db}: {', '.join([f'{t}mm' for t in tailles.keys()])}")
-    
-    with st.expander("📋 Consulter la base de données mitrale"):
-        for categorie_db, marques in protheses_mitrales.items():
-            st.markdown(f"**{categorie_db}:**")
-            for marque_db, tailles in marques.items():
-                st.markdown(f"- {marque_db}: {', '.join([f'{t}mm' for t in tailles.keys()])}")
+    with col_info3:
+        st.markdown("""
+        <div class="patient-info">
+            <h4>🔄 3. Obtenez les résultats</h4>
+            <p>Les résultats se mettent à jour automatiquement en temps réel</p>
+        </div>
+        """, unsafe_allow_html=True)
 
 # ============================================================================
-# PIED DE PAGE COMMUN
+# ÉVALUATION PRVG - COMPLÈTE ET DYNAMIQUE
+# ============================================================================
+
+elif evaluation_choice == "🫀 Pression Remplissage VG":
+    
+    st.markdown('<div class="section-header">🫀 ÉVALUATION PRESSION DE REMPLISSAGE VG</div>', unsafe_allow_html=True)
+    
+    # Configuration en colonnes
+    col_config, col_feedback = st.columns([1, 2])
+    
+    with col_config:
+        st.subheader("🎯 CONFIGURATION")
+        
+        # Situation clinique
+        situation = st.selectbox("Situation Clinique", [
+            "FE VG ≥ 50% - Patient standard",
+            "FE VG < 50% - Dysfonction systolique",
+            "Fibrillation auriculaire",
+            "Sténose mitrale",
+            "Régurgitation mitrale sévère",
+            "Prothèse valvulaire mitrale",
+            "Calcification annulaire mitrale sévère"
+        ])
+        
+        st.markdown("---")
+        st.subheader("📊 PARAMÈTRES MESURÉS")
+        
+        # Paramètres communs
+        e_e_prime_moyen = st.slider("E/e' moyen", 5.0, 25.0, 12.0, 0.1, key="e_e_prime_prvg")
+        volume_og_index = st.slider("Volume OG indexé (ml/m²)", 15, 80, 35, key="volume_og_prvg")
+        tr_vitesse = st.slider("Vitesse TR max (m/s)", 1.5, 4.5, 2.8, 0.1, key="tr_vitesse_prvg")
+        
+        if situation not in ["Fibrillation auriculaire", "Sténose mitrale", "Prothèse valvulaire mitrale"]:
+            e_a_ratio = st.slider("Rapport E/A", 0.5, 3.0, 1.2, 0.1, key="e_a_ratio_prvg")
+            dt = st.slider("Temps décélération (ms)", 100, 400, 180, key="dt_prvg")
+            e_vitesse = st.slider("Vitesse E (cm/s)", 20, 200, 80, key="e_vitesse_prvg")
+        
+        # Paramètres spécifiques selon la situation
+        if situation == "Sténose mitrale":
+            gradient_mitral = st.slider("Gradient moyen mitral (mmHg)", 2, 40, 12, key="gradient_mitral")
+            surface_mitrale = st.slider("Surface mitrale (cm²)", 0.5, 4.0, 1.3, 0.1, key="surface_mitrale")
+        
+        elif situation == "Régurgitation mitrale sévère":
+            volume_regurgitant = st.slider("Volume régurgitant (ml)", 10, 150, 65, key="volume_regurgitant")
+            pap_systolique = st.slider("PAP systolique (mmHg)", 15, 100, 42, key="pap_rm")
+        
+        elif situation == "Prothèse valvulaire mitrale":
+            gradient_prothese = st.slider("Gradient moyen prothèse (mmHg)", 2, 15, 6, key="gradient_prothese")
+            eoa_prothese = st.slider("EOA prothèse (cm²)", 0.5, 3.0, 1.8, 0.1, key="eoa_prothese")
+    
+    with col_feedback:
+        st.subheader("📈 RÉSULTATS EN TEMPS RÉEL")
+        
+        # Évaluation dynamique selon la situation
+        if "≥ 50%" in situation:
+            evaluation = evaluer_prvg_fevg_preservee(e_e_prime_moyen, volume_og_index, tr_vitesse)
+            
+            if evaluation["prvg_normale"]:
+                st.markdown("""
+                <div class="success-alert">
+                    <h3>✅ PRESSION DE REMPLISSAGE VG NORMALE</h3>
+                    <p><strong>Critères remplis:</strong> E/e' moyen ≤ 8 ET Volume OG ≤ 34 ml/m²</p>
+                    <p><em>Recommandation:</em> Surveillance standard</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            elif evaluation["prvg_elevee"]:
+                st.markdown("""
+                <div class="critical-alert">
+                    <h3>🔴 PRESSION DE REMPLISSAGE VG ÉLEVÉE</h3>
+                    <p><strong>Critère majeur:</strong> E/e' moyen > 14</p>
+                    <p><em>Recommandation:</em> Évaluation clinique approfondie urgente</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            elif evaluation["zone_grise"]:
+                if evaluation["criteres_secondaires"] >= 2:
+                    st.markdown(f"""
+                    <div class="warning-alert">
+                        <h3>🟡 PRESSION DE REMPLISSAGE VG PROBABLEMENT ÉLEVÉE</h3>
+                        <p><strong>Zone grise avec {evaluation['criteres_secondaires']}/3 critères secondaires positifs</strong></p>
+                        <p><em>Recommandation:</em> Évaluation multimodale recommandée</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown(f"""
+                    <div class="dynamic-result">
+                        <h3>🟡 INDÉTERMINÉ - SURVEILLANCE RENFORCÉE</h3>
+                        <p><strong>Seulement {evaluation['criteres_secondaires']}/3 critères secondaires</strong></p>
+                        <p><em>Recommandation:</em> Évaluation clinique contextuelle</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+        
+        elif "< 50%" in situation:
+            pattern, libelle = evaluer_pattern_diastolique(e_a_ratio, dt, e_vitesse)
+            
+            if pattern == "relaxation_alteree":
+                st.markdown("""
+                <div class="success-alert">
+                    <h3>📊 PATTERN DE RELAXATION ALTÉRÉE</h3>
+                    <p><strong>PRVG probablement normale</strong></p>
+                    <p><em>Caractéristiques:</em> E/A ≤ 0.8 + E ≤ 50 cm/s</p>
+                </div>
+                """, unsafe_allow_html=True)
+            elif pattern == "restrictif":
+                st.markdown("""
+                <div class="critical-alert">
+                    <h3>📊 PATTERN RESTRICTIF</h3>
+                    <p><strong>PRVG ÉLEVÉE - PRONOSTIC DÉFAVORABLE</strong></p>
+                    <p><em>Caractéristiques:</em> E/A ≥ 2 + DT < 160 ms</p>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown("""
+                <div class="warning-alert">
+                    <h3>📊 PATTERN PSEUDONORMAL</h3>
+                    <p><strong>ÉVALUATION COMPLÉMENTAIRE NÉCESSAIRE</strong></p>
+                    <p><em>Recommandation:</em> Évaluer E/e' et volume OG pour confirmation</p>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        elif situation == "Fibrillation auriculaire":
+            st.markdown("""
+            <div class="dynamic-result">
+                <h3>💓 FIBRILLATION AURICULAIRE - ÉVALUATION SPÉCIFIQUE</h3>
+                <p><strong>Paramètres valides en FA:</strong> E/e' moyen, Volume OG, Vitesse TR</p>
+                <p><strong>Paramètres non valides:</strong> Rapport E/A, Temps de décélération</p>
+                <p><strong>Seuils spécifiques:</strong> E/e' > 11 → PRVG élevée (spécificité 85%)</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if e_e_prime_moyen > 11:
+                st.markdown("""
+                <div class="critical-alert">
+                    <h3>🔴 PRESSION DE REMPLISSAGE VG ÉLEVÉE EN FA</h3>
+                    <p><strong>E/e' moyen > 11 → PRVG élevée avec bonne spécificité</strong></p>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        elif situation == "Sténose mitrale":
+            st.markdown("""
+            <div class="critical-alert">
+                <h3>⚠️ ATTENTION - STÉNOSE MITRALE</h3>
+                <p><strong>Les paramètres conventionnels de PRVG ne sont PAS VALIDES</strong></p>
+                <p><em>Limitations:</em> Le gradient mitral modifie les vitesses Doppler</p>
+                <p><em>Recommandation:</em> Utiliser des paramètres indirects (PAP, dimensions OG, fonction VD)</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        elif situation == "Régurgitation mitrale sévère":
+            st.markdown("""
+            <div class="warning-alert">
+                <h3>🟡 RÉGURGITATION MITRALE SÉVÈRE - INTERPRÉTATION AVEC PRÉCAUTION</h3>
+                <p><strong>E/e' peut surestimer la PRVG réelle</strong></p>
+                <p><em>Paramètre le plus fiable:</em> Volume OG indexé</p>
+                <p><em>Seuil significatif:</em> Volume OG > 40 ml/m² → élévation chronique des pressions</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        elif situation == "Prothèse valvulaire mitrale":
+            st.markdown("""
+            <div class="critical-alert">
+                <h3>🔴 PROTHÈSE VALVULAIRE MITRALE - LIMITATIONS SÉVÈRES</h3>
+                <p><strong>Paramètres conventionnels de PRVG NON VALIDES</strong></p>
+                <p><em>Raisons:</em> Artefacts acoustiques, modifications hémodynamiques</p>
+                <p><em>Recommandation:</em> Utiliser des paramètres indirects (PAP, volume OG, fonction VD)</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        elif situation == "Calcification annulaire mitrale sévère":
+            st.markdown("""
+            <div class="critical-alert">
+                <h3>🔴 CALCIFICATION ANNULAIRE - CONTRE-INDICATION</h3>
+                <p><strong>E/e' EST CONTRE-INDIQUÉ - SURESTIMATION SYSTÉMATIQUE</strong></p>
+                <p><em>Alternative:</em> Volume OG, Vitesse TR, Flux veineux pulmonaire</p>
+                <p><em>Seuils alternatifs:</em> Volume OG > 34 ml/m², TR > 2.8 m/s</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Feedback paramétrique détaillé
+        st.subheader("🔍 ANALYSE PARAMÈTRE PAR PARAMÈTRE")
+        
+        # E/e' moyen (sauf contre-indications)
+        if situation not in ["Sténose mitrale", "Prothèse valvulaire mitrale", "Calcification annulaire mitrale sévère"]:
+            classe_e_e_prime = "good" if e_e_prime_moyen <= 8 else "warning" if e_e_prime_moyen <= 14 else "danger"
+            interpretation_e_e = "NORMAL" if e_e_prime_moyen <= 8 else "LIMITE" if e_e_prime_moyen <= 14 else "ÉLEVÉ"
+            
+            if situation == "Fibrillation auriculaire":
+                interpretation_e_e = "NORMAL" if e_e_prime_moyen <= 11 else "ÉLEVÉ"
+            
+            st.markdown(f"""
+            <div class="parameter-feedback {classe_e_e_prime}">
+                <strong>E/e' moyen:</strong> {e_e_prime_moyen} 
+                <span class="real-time-value">→ {interpretation_e_e}</span>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div class="parameter-feedback danger">
+                <strong>E/e' moyen:</strong> {e_e_prime_moyen} 
+                <span class="real-time-value">→ NON INTERPRÉTABLE</span>
+                <p style='margin: 0.5rem 0 0 0; font-size: 0.9rem; color: #721c24;'>Contre-indiqué dans cette situation</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Volume OG (toujours valide)
+        classe_volume_og = "good" if volume_og_index <= 34 else "warning" if volume_og_index <= 40 else "danger"
+        st.markdown(f"""
+        <div class="parameter-feedback {classe_volume_og}">
+            <strong>Volume OG indexé:</strong> {volume_og_index} ml/m²
+            <span class="real-time-value">→ {'NORMAL' if volume_og_index <= 34 else 'LIMITE' if volume_og_index <= 40 else 'DILATÉ'}</span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Vitesse TR (toujours valide)
+        classe_tr = "good" if tr_vitesse <= 2.8 else "warning" if tr_vitesse <= 3.4 else "danger"
+        st.markdown(f"""
+        <div class="parameter-feedback {classe_tr}">
+            <strong>Vitesse TR:</strong> {tr_vitesse} m/s
+            <span class="real-time-value">→ {'NORMAL' if tr_vitesse <= 2.8 else 'LIMITE' if tr_vitesse <= 3.4 else 'ÉLEVÉE'}</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+# ============================================================================
+# ÉVALUATION HTAP - COMPLÈTE ET DYNAMIQUE
+# ============================================================================
+
+elif evaluation_choice == "🌊 Probabilité HTAP ESC 2022":
+    
+    st.markdown('<div class="section-header">🌊 PROBABILITÉ D\'HYPERTENSION ARTÉRIELLE PULMONAIRE ESC 2022</div>', unsafe_allow_html=True)
+    
+    col_config, col_feedback = st.columns([1, 2])
+    
+    with col_config:
+        st.subheader("🎯 PARAMÈTRES PRINCIPAUX")
+        
+        tr_vitesse = st.slider("Vitesse TR maximale (m/s)", 1.5, 5.0, 3.2, 0.1)
+        vc_diametre = st.slider("Diamètre VCI (mm)", 10, 30, 22)
+        vc_collapsus = st.slider("Collapsus VCI (%)", 0, 100, 35)
+        rv_ra_ratio = st.selectbox("Rapport VD/OG", ["<0.6", "0.6-1.0", "≥1.0"])
+        septum_paradoxal = st.selectbox("Mouvement septum paradoxal", ["Absent", "Présent"])
+        
+        st.markdown("---")
+        st.subheader("📊 PARAMÈTRES SECONDAIRES")
+        
+        tapse = st.slider("TAPSE (mm)", 5, 25, 16)
+        s_tricuspide = st.slider("S' tricuspide (cm/s)", 5.0, 15.0, 10.5, 0.1)
+        fac_vd = st.slider("FAC VD (%)", 20, 60, 38)
+        acceleration_time = st.slider("Temps accélération VTID (ms)", 40, 120, 65)
+        diam_ap = st.slider("Diamètre artère pulmonaire (mm)", 15, 40, 32)
+        pvr_estimee = st.slider("PVR estimée (UW)", 1.0, 15.0, 4.5, 0.1)
+        
+        st.markdown("---")
+        st.subheader("🔍 PARAMÈTRES ADDITIONNELS")
+        
+        contexte_cardio_gauche = st.selectbox("Cardiopathie gauche connue", ["Non", "Oui"])
+        diam_og = st.slider("Diamètre OG (mm)", 30, 60, 42)
+        strain_vd = st.slider("Strain longitudinal VD (%)", -30, -10, -18)
+    
+    with col_feedback:
+        st.subheader("📈 PROBABILITÉ HTAP EN TEMPS RÉEL")
+        
+        # Calcul du score
+        score_htap = calculer_probabilite_htap(tr_vitesse, vc_diametre, vc_collapsus, rv_ra_ratio, septum_paradoxal)
+        
+        # Calcul score secondaire
+        score_secondaire = 0
+        if tapse < 17: score_secondaire += 1
+        if s_tricuspide < 9.5: score_secondaire += 1
+        if fac_vd < 35: score_secondaire += 1
+        if acceleration_time < 80: score_secondaire += 1
+        if pvr_estimee > 3: score_secondaire += 1
+        
+        # Affichage résultat principal
+        if score_htap <= 1:
+            st.markdown("""
+            <div class="success-alert">
+                <h3>🟢 PROBABILITÉ FAIBLE</h3>
+                <p><strong>Score principal:</strong> ≤1 point - HTAP peu probable</p>
+                <p><strong>Score secondaire:</strong> {score_secondaire}/5 points de confirmation</p>
+                <p><em>Recommandation:</em> Surveillance standard si clinique concordante</p>
+            </div>
+            """.format(score_secondaire=score_secondaire), unsafe_allow_html=True)
+        
+        elif score_htap == 2:
+            if score_secondaire >= 2:
+                st.markdown("""
+                <div class="warning-alert">
+                    <h3>🟡 PROBABILITÉ INTERMÉDIAIRE</h3>
+                    <p><strong>Score principal:</strong> 2 points</p>
+                    <p><strong>Score secondaire:</strong> {score_secondaire}/5 points de confirmation</p>
+                    <p><em>Recommandation:</em> Investigations complémentaires nécessaires</p>
+                </div>
+                """.format(score_secondaire=score_secondaire), unsafe_allow_html=True)
+            else:
+                st.markdown("""
+                <div class="success-alert">
+                    <h3>🟢 PROBABILITÉ FAIBLE</h3>
+                    <p><strong>Score principal:</strong> 2 points mais peu de signes secondaires</p>
+                    <p><strong>Score secondaire:</strong> {score_secondaire}/5 points de confirmation</p>
+                    <p><em>Recommandation:</em> Surveillance renforcée</p>
+                </div>
+                """.format(score_secondaire=score_secondaire), unsafe_allow_html=True)
+        
+        else:
+            st.markdown("""
+            <div class="critical-alert">
+                <h3>🔴 PROBABILITÉ ÉLEVÉE</h3>
+                <p><strong>Score principal:</strong> ≥3 points - HTAP probable</p>
+                <p><strong>Score secondaire:</strong> {score_secondaire}/5 points de confirmation</p>
+                <p><em>Recommandation:</em> Cathétérisme cardiaque recommandé</p>
+            </div>
+            """.format(score_secondaire=score_secondaire), unsafe_allow_html=True)
+        
+        # Métriques détaillées
+        st.subheader("📊 SCORING DÉTAILLÉ")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.markdown(f"""
+            <div class="metric-card">
+                <h3>🎯 Score Principal</h3>
+                <p style="font-size: 2rem; font-weight: bold; color: {'#28a745' if score_htap <= 1 else '#ffc107' if score_htap == 2 else '#dc3545'}">
+                    {score_htap}/7
+                </p>
+                <p>Probabilité HTAP</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown(f"""
+            <div class="metric-card">
+                <h3>📏 Score Secondaire</h3>
+                <p style="font-size: 2rem; font-weight: bold; color: {'#28a745' if score_secondaire <= 1 else '#ffc107' if score_secondaire <= 3 else '#dc3545'}">
+                    {score_secondaire}/5
+                </p>
+                <p>Signes de confirmation</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown(f"""
+            <div class="metric-card">
+                <h3>📏 Vitesse TR</h3>
+                <p style="font-size: 1.8rem; font-weight: bold;">
+                    {tr_vitesse} m/s
+                </p>
+                <p>{'Normale' if tr_vitesse <= 2.8 else 'Limite' if tr_vitesse <= 3.4 else 'Élevée'}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col4:
+            st.markdown(f"""
+            <div class="metric-card">
+                <h3>💓 TAPSE</h3>
+                <p style="font-size: 1.8rem; font-weight: bold;">
+                    {tapse} mm
+                </p>
+                <p>{'Normal' if tapse >= 17 else 'Altéré'}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Feedback paramétrique détaillé
+        st.subheader("🔍 ANALYSE PARAMÈTRE PAR PARAMÈTRE")
+        
+        # Vitesse TR
+        classe_tr_htap = "good" if tr_vitesse <= 2.8 else "warning" if tr_vitesse <= 3.4 else "danger"
+        st.markdown(f"""
+        <div class="parameter-feedback {classe_tr_htap}">
+            <strong>Vitesse TR:</strong> {tr_vitesse} m/s
+            <span class="real-time-value">→ {'NORMAL' if tr_vitesse <= 2.8 else 'LIMITE' if tr_vitesse <= 3.4 else 'ÉLEVÉE'}</span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # VCI
+        classe_vci = "good" if vc_diametre <= 21 and vc_collapsus > 50 else "warning" if vc_diametre <= 21 or vc_collapsus > 50 else "danger"
+        interpretation_vci = "NORMAL" if vc_diametre <= 21 and vc_collapsus > 50 else "LIMITE" if vc_diametre <= 21 or vc_collapsus > 50 else "ANORMAL"
+        st.markdown(f"""
+        <div class="parameter-feedback {classe_vci}">
+            <strong>VCI:</strong> {vc_diametre} mm / {vc_collapsus}% collapsus
+            <span class="real-time-value">→ {interpretation_vci}</span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # TAPSE
+        classe_tapse = "good" if tapse >= 17 else "warning" if tapse >= 14 else "danger"
+        st.markdown(f"""
+        <div class="parameter-feedback {classe_tapse}">
+            <strong>TAPSE:</strong> {tapse} mm
+            <span class="real-time-value">→ {'NORMAL' if tapse >= 17 else 'LIMITE' if tapse >= 14 else 'ALTÉRÉ'}</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+# ============================================================================
+# ÉVALUATION PROTHÈSES VALVULAIRES - COMPLÈTE ET DYNAMIQUE
+# ============================================================================
+
+elif evaluation_choice == "⚙️ Prothèses Valvulaires":
+    
+    st.markdown('<div class="section-header">⚙️ ÉVALUATION DES PROTHÈSES VALVULAIRES</div>', unsafe_allow_html=True)
+    
+    col_config, col_feedback = st.columns([1, 2])
+    
+    with col_config:
+        st.subheader("🔧 CONFIGURATION PROTHÈSE")
+        
+        type_general = st.selectbox("Type de prothèse", ["Prothèse aortique", "Prothèse mitrale"])
+        
+        if type_general == "Prothèse aortique":
+            categorie = st.selectbox("Catégorie", list(protheses_aortiques.keys()))
+            marque = st.selectbox("Marque/Modèle", list(protheses_aortiques[categorie].keys()))
+            tailles_disponibles = list(protheses_aortiques[categorie][marque].keys())
+            taille = st.selectbox("Taille (mm)", tailles_disponibles)
+            
+            donnees_theoriques = protheses_aortiques[categorie][marque][taille]
+            eoa_theorique = donnees_theoriques["EOA_théorique"]
+            gradient_theorique = donnees_theoriques["Gradient_moyen_normal"]
+            
+            st.markdown("---")
+            st.subheader("📊 MESURES AORTIQUES")
+            
+            gradient_moyen = st.slider("Gradient moyen (mmHg)", 5, 60, 18, key="gradient_aortique")
+            eoa_mesuree = st.slider("EOA mesurée (cm²)", 0.5, 3.0, eoa_theorique, 0.1, key="eoa_aortique")
+            dvi = st.slider("DVI", 0.1, 0.5, 0.32, 0.01, key="dvi")
+            acceleration_time = st.slider("Temps accélération (ms)", 50, 150, 90, key="acceleration_time")
+            
+        else:
+            categorie = st.selectbox("Catégorie", list(protheses_mitrales.keys()))
+            marque = st.selectbox("Marque/Modèle", list(protheses_mitrales[categorie].keys()))
+            tailles_disponibles = list(protheses_mitrales[categorie][marque].keys())
+            taille = st.selectbox("Taille (mm)", tailles_disponibles)
+            
+            donnees_theoriques = protheses_mitrales[categorie][marque][taille]
+            eoa_theorique = donnees_theoriques["EOA_théorique"]
+            gradient_theorique = donnees_theoriques["Gradient_moyen_normal"]
+            
+            st.markdown("---")
+            st.subheader("📊 MESURES MITRALES")
+            
+            gradient_moyen = st.slider("Gradient moyen (mmHg)", 2, 15, 6, key="gradient_mitral")
+            eoa_mesuree = st.slider("EOA mesurée (cm²)", 0.5, 3.0, eoa_theorique, 0.1, key="eoa_mitrale")
+            pht = st.slider("PHT (ms)", 50, 300, 130, key="pht")
+            pression_og_estimee = st.slider("Pression OG estimée (mmHg)", 5, 40, 15, key="pression_og")
+        
+        st.markdown("---")
+        st.subheader("👤 FACTEURS PATIENT")
+        
+        fa = st.checkbox("Fibrillation auriculaire", key="fa_prothese")
+        antecedent_te = st.checkbox("Antécédent thrombo-embolique", key="antecedent_te_prothese")
+        inr = st.slider("INR", 1.0, 5.0, 2.3, 0.1, key="inr_prothese")
+        fevg_prothese = st.slider("FE VG (%)", 20, 70, 55, key="fevg_prothese")
+        
+        st.markdown("---")
+        st.subheader("🔄 ÉVOLUTION")
+        
+        gradient_precedent = st.slider("Gradient précédent (mmHg) - si connu", 
+                                     5, 60, 15, key="gradient_precedent")
+        delta_temps = st.slider("Délai depuis dernier examen (mois)", 1, 60, 12, key="delta_temps")
+    
+    with col_feedback:
+        st.subheader("📈 PERFORMANCE PROTHÈTIQUE EN TEMPS RÉEL")
+        
+        # Calculs dynamiques
+        ratio_eoa = (eoa_mesuree / eoa_theorique) * 100
+        severite_ppm, eoai = calculer_ppm(eoa_mesuree, surface_corporelle)
+        risque_thrombose, score_thrombose = evaluer_risque_thrombose(
+            categorie, fevg_prothese, fa, antecedent_te, inr
+        )
+        
+        # Calcul évolution
+        if gradient_precedent:
+            delta_gradient = gradient_moyen - gradient_precedent
+            evolution_annuelle = (delta_gradient / delta_temps) * 12 if delta_temps > 0 else 0
+        else:
+            delta_gradient = 0
+            evolution_annuelle = 0
+        
+        # Détermination performance
+        if type_general == "Prothèse aortique":
+            if gradient_moyen > 35 and eoa_mesuree < 1.0 and dvi < 0.25:
+                performance = "Dysfonction sévère"
+                couleur_perf = "🔴"
+            elif gradient_moyen > 20 or eoa_mesuree < 1.2 or dvi < 0.30:
+                performance = "Dysfonction modérée"
+                couleur_perf = "🟡"
+            else:
+                performance = "Fonction normale"
+                couleur_perf = "🟢"
+        else:
+            if gradient_moyen > 10 and eoa_mesuree < 1.0:
+                performance = "Dysfonction sévère"
+                couleur_perf = "🔴"
+            elif gradient_moyen > 7 or eoa_mesuree < 1.3:
+                performance = "Dysfonction modérée"
+                couleur_perf = "🟡"
+            else:
+                performance = "Fonction normale"
+                couleur_perf = "🟢"
+        
+        # Affichage métriques principales
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.markdown(f"""
+            <div class="metric-card">
+                <h3>{couleur_perf} Performance</h3>
+                <p style="font-size: 1.5rem; font-weight: bold; color: {'#dc3545' if 'sévère' in performance else '#ffc107' if 'modérée' in performance else '#28a745'}">
+                    {performance}
+                </p>
+                <p>Gradient: {gradient_moyen} mmHg</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            couleur_ppm = "🔴" if severite_ppm == "severe" else "🟡" if severite_ppm == "modere" else "🟢"
+            libelle_ppm = "Sévère" if severite_ppm == "severe" else "Modéré" if severite_ppm == "modere" else "Absent"
+            
+            st.markdown(f"""
+            <div class="metric-card">
+                <h3>{couleur_ppm} PPM</h3>
+                <p style="font-size: 1.5rem; font-weight: bold; color: {'#dc3545' if severite_ppm == 'severe' else '#ffc107' if severite_ppm == 'modere' else '#28a745'}">
+                    {libelle_ppm}
+                </p>
+                <p>EOAi: {eoai:.2f} cm²/m²</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            couleur_thrombose = "🔴" if risque_thrombose == "eleve" else "🟡" if risque_thrombose == "modere" else "🟢"
+            libelle_thrombose = "Élevé" if risque_thrombose == "eleve" else "Modéré" if risque_thrombose == "modere" else "Faible"
+            
+            st.markdown(f"""
+            <div class="metric-card">
+                <h3>{couleur_thrombose} Risque Thrombose</h3>
+                <p style="font-size: 1.5rem; font-weight: bold; color: {'#dc3545' if risque_thrombose == 'eleve' else '#ffc107' if risque_thrombose == 'modere' else '#28a745'}">
+                    {libelle_thrombose}
+                </p>
+                <p>Score: {score_thrombose}/8</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col4:
+            if gradient_precedent:
+                couleur_evolution = "danger" if delta_gradient > 10 else "warning" if delta_gradient > 5 else "good"
+                libelle_evolution = "Aggravation rapide" if delta_gradient > 10 else "Évolution défavorable" if delta_gradient > 5 else "Stable"
+                
+                st.markdown(f"""
+                <div class="metric-card">
+                    <h3>📈 Évolution</h3>
+                    <p style="font-size: 1.5rem; font-weight: bold; color: {'#dc3545' if delta_gradient > 10 else '#ffc107' if delta_gradient > 5 else '#28a745'}">
+                        {libelle_evolution}
+                    </p>
+                    <p>Δ: {delta_gradient:+d} mmHg</p>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <h3>📈 Évolution</h3>
+                    <p style="font-size: 1.5rem; font-weight: bold; color: #6c757d">
+                        Données manquantes
+                    </p>
+                    <p>Examen de référence nécessaire</p>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        # Feedback détaillé
+        st.subheader("🔍 ANALYSE DÉTAILLÉE")
+        
+        # Gradient
+        if type_general == "Prothèse aortique":
+            seuil_alerte_gradient = 35 if "sévère" in performance else 20
+            classe_gradient = "good" if gradient_moyen <= 20 else "warning" if gradient_moyen <= 35 else "danger"
+        else:
+            seuil_alerte_gradient = 10 if "sévère" in performance else 7
+            classe_gradient = "good" if gradient_moyen <= 7 else "warning" if gradient_moyen <= 10 else "danger"
+        
+        st.markdown(f"""
+        <div class="parameter-feedback {classe_gradient}">
+            <strong>Gradient moyen:</strong> {gradient_moyen} mmHg
+            <span class="real-time-value">→ {'NORMAL' if gradient_moyen <= seuil_alerte_gradient else 'ÉLEVÉ'}</span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # EOA
+        st.markdown(f"""
+        <div class="parameter-feedback {'good' if ratio_eoa >= 80 else 'warning' if ratio_eoa >= 65 else 'danger'}">
+            <strong>EOA mesurée/théorique:</strong> {eoa_mesuree} cm² / {ratio_eoa:.1f}%
+            <span class="real-time-value">→ {'BON MATCH' if ratio_eoa >= 80 else 'MATCH ACCEPTABLE' if ratio_eoa >= 65 else 'MISMATCH'}</span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # PPM
+        classe_ppm = "good" if severite_ppm == "absent" else "warning" if severite_ppm == "modere" else "danger"
+        st.markdown(f"""
+        <div class="parameter-feedback {classe_ppm}">
+            <strong>Patient-Prothèse Mismatch:</strong> {libelle_ppm}
+            <span class="real-time-value">→ EOAi = {eoai:.2f} cm²/m²</span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Évolution
+        if gradient_precedent:
+            classe_evolution = "good" if delta_gradient <= 0 else "warning" if delta_gradient <= 5 else "danger"
+            st.markdown(f"""
+            <div class="parameter-feedback {classe_evolution}">
+                <strong>Évolution du gradient:</strong> {delta_gradient:+d} mmHg en {delta_temps} mois
+                <span class="real-time-value">→ {'STABLE' if delta_gradient <= 0 else 'LENTE' if delta_gradient <= 5 else 'RAPIDE'}</span>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Recommandations finales
+        st.subheader("💡 RECOMMANDATIONS FINALES")
+        
+        if performance == "Dysfonction sévère":
+            st.error("""
+            **🔴 ACTION REQUISE - CONSULTATION CHIRURGICALE URGENTE**
+            - Évaluation pour reintervention
+            - Surveillance très rapprochée
+            - Optimisation traitement médical en attendant
+            - Considérer anticoagulation si mécanique
+            """)
+        elif performance == "Dysfonction modérée":
+            st.warning("""
+            **🟡 SURVEILLANCE RENFORCÉE - CONTRÔLE 6 MOIS**
+            - Optimisation traitement médical
+            - Surveillance des symptômes
+            - Vérifier observance anticoagulation si mécanique
+            - Préparer éventuelle intervention
+            """)
+        else:
+            st.success("""
+            **🟢 SURVEILLANCE STANDARD - CONTRÔLE ANNUEL**
+            - Maintenir traitement actuel
+            - Surveillance clinique régulière
+            - Éducation du patient sur les signes d'alerte
+            - Maintenir INR thérapeutique si mécanique
+            """)
+        
+        if severite_ppm == "severe":
+            st.error("""
+            **🔴 PPM SÉVÈRE DÉTECTÉ - IMPACT PRONOSTIQUE DÉFAVORABLE**
+            - Optimisation maximale traitement médical
+            - Surveillance rapprochée des symptômes
+            - Considérer reintervention si symptomatique
+            - Évaluation nutritionnelle et réadaptation
+            """)
+
+# ============================================================================
+# ÉVALUATIONS RESTANTES (structure complète)
+# ============================================================================
+
+elif evaluation_choice == "📊 Dysfonction Diastolique Complète":
+    
+    st.markdown('<div class="section-header">📊 ÉVALUATION COMPLÈTE FONCTION DIASTOLIQUE</div>', unsafe_allow_html=True)
+    
+    col_config, col_feedback = st.columns([1, 2])
+    
+    with col_config:
+        st.subheader("🎯 PARAMÈTRES D'ENTRÉE")
+        
+        fevg = st.selectbox("FE VG", ["≥50%", "41-49%", "≤40%"], key="fevg_diastolique")
+        
+        st.markdown("**📏 Doppler pulsé mitral:**")
+        e_vitesse = st.slider("Vitesse E (cm/s)", 20, 200, 80, key="e_vitesse_diastolique")
+        a_vitesse = st.slider("Vitesse A (cm/s)", 20, 150, 70, key="a_vitesse_diastolique")
+        e_a_ratio = st.slider("Rapport E/A", 0.5, 3.0, 1.2, 0.1, key="e_a_ratio_diastolique")
+        dt = st.slider("Temps décélération (ms)", 100, 400, 180, key="dt_diastolique")
+        
+        st.markdown("**🎯 Doppler tissulaire:**")
+        e_prime_septal = st.slider("e' septal (cm/s)", 3.0, 20.0, 7.0, 0.1, key="e_prime_septal_diastolique")
+        e_prime_lateral = st.slider("e' latéral (cm/s)", 3.0, 20.0, 9.0, 0.1, key="e_prime_lateral_diastolique")
+        e_e_prime_moyen = st.slider("E/e' moyen", 5.0, 25.0, 10.0, 0.1, key="e_e_prime_moyen_diastolique")
+        
+        st.markdown("**📊 Paramètres structurels:**")
+        volume_og_index = st.slider("Volume OG indexé (ml/m²)", 15, 80, 35, key="volume_og_diastolique")
+        tr_vitesse = st.slider("Vitesse TR max (m/s)", 1.5, 4.5, 2.5, 0.1, key="tr_vitesse_diastolique")
+        
+        st.markdown("**🌀 Paramètres avancés:**")
+        rapport_s_d = st.slider("Rapport S/D flux pulmonaire", 0.5, 2.5, 1.2, 0.1, key="rapport_s_d")
+        duree_ar_a = st.slider("Durée Ar-A (ms)", -50, 100, 10, key="duree_ar_a")
+        vp = st.slider("Vitesse propagation Vp (cm/s)", 30, 80, 45, key="vp")
+    
+    with col_feedback:
+        st.subheader("📈 RÉSULTATS DÉTAILLÉS")
+        
+        # Évaluation complète
+        evaluation = evaluer_dysfonction_diastolique_complete(
+            e_a_ratio, e_e_prime_moyen, volume_og_index, tr_vitesse, dt, e_vitesse, fevg
+        )
+        
+        if fevg == "≥50%":
+            if evaluation["prvg_normale"]:
+                st.markdown("""
+                <div class="success-alert">
+                    <h3>✅ FONCTION DIASTOLIQUE NORMALE</h3>
+                    <p><strong>Classification:</strong> Grade 0</p>
+                    <p><strong>PRVG:</strong> Normale</p>
+                </div>
+                """, unsafe_allow_html=True)
+            elif evaluation["prvg_elevee"]:
+                st.markdown("""
+                <div class="critical-alert">
+                    <h3>🔴 DYSFONCTION DIASTOLIQUE SÉVÈRE</h3>
+                    <p><strong>Classification:</strong> Grade 3</p>
+                    <p><strong>PRVG:</strong> Élevée</p>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown("""
+                <div class="warning-alert">
+                    <h3>🟡 DYSFONCTION DIASTOLIQUE MODÉRÉE</h3>
+                    <p><strong>Classification:</strong> Grade 2</p>
+                    <p><strong>PRVG:</strong> Indéterminée - Zone grise</p>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            pattern = evaluation.get("pattern", "")
+            if pattern == "relaxation_alteree":
+                st.markdown("""
+                <div class="success-alert">
+                    <h3>📊 DYSFONCTION DIASTOLIQUE LÉGÈRE</h3>
+                    <p><strong>Classification:</strong> Grade 1</p>
+                    <p><strong>Pattern:</strong> Relaxation altérée</p>
+                    <p><strong>PRVG:</strong> Probablement normale</p>
+                </div>
+                """, unsafe_allow_html=True)
+            elif pattern == "restrictif":
+                st.markdown("""
+                <div class="critical-alert">
+                    <h3>📊 DYSFONCTION DIASTOLIQUE SÉVÈRE</h3>
+                    <p><strong>Classification:</strong> Grade 3</p>
+                    <p><strong>Pattern:</strong> Restrictif</p>
+                    <p><strong>PRVG:</strong> Élevée</p>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown("""
+                <div class="warning-alert">
+                    <h3>📊 DYSFONCTION DIASTOLIQUE MODÉRÉE</h3>
+                    <p><strong>Classification:</strong> Grade 2</p>
+                    <p><strong>Pattern:</strong> Pseudonormal</p>
+                    <p><strong>PRVG:</strong> Élevée</p>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        # Feedback paramétrique détaillé
+        st.subheader("🔍 ANALYSE PARAMÉTRIQUE COMPLÈTE")
+        
+        # Création d'un tableau des paramètres
+        parametres_data = {
+            "Paramètre": ["Rapport E/A", "E/e' moyen", "Volume OG indexé", "Vitesse TR", 
+                         "Temps décélération", "Rapport S/D", "Durée Ar-A", "Vitesse Vp"],
+            "Valeur": [e_a_ratio, e_e_prime_moyen, f"{volume_og_index} ml/m²", f"{tr_vitesse} m/s",
+                      f"{dt} ms", rapport_s_d, f"{duree_ar_a} ms", f"{vp} cm/s"],
+            "Interprétation": [
+                "Normal" if 0.8 <= e_a_ratio <= 2.0 else "Anormal",
+                "Normal" if e_e_prime_moyen <= 8 else "Limite" if e_e_prime_moyen <= 14 else "Élevé",
+                "Normal" if volume_og_index <= 34 else "Limite" if volume_og_index <= 40 else "Dilaté",
+                "Normal" if tr_vitesse <= 2.8 else "Limite" if tr_vitesse <= 3.4 else "Élevée",
+                "Normal" if 160 <= dt <= 240 else "Court" if dt < 160 else "Long",
+                "Normal" if rapport_s_d > 1 else "Inversé",
+                "Normal" if duree_ar_a < 30 else "Prolongé",
+                "Normal" if vp >= 45 else "Ralenti"
+            ]
+        }
+        
+        st.dataframe(pd.DataFrame(parametres_data), use_container_width=True)
+
+elif evaluation_choice == "🔄 Constrictive vs Restrictive":
+    
+    st.markdown('<div class="section-header">🔄 DIAGNOSTIC DIFFÉRENTIEL PÉRICARDITE CONSTRICTIVE vs RESTRICTIVE</div>', unsafe_allow_html=True)
+    
+    col_config, col_feedback = st.columns([1, 2])
+    
+    with col_config:
+        st.subheader("🎯 CRITÈRES DIFFÉRENTIELS")
+        
+        st.markdown("**🔄 Paramètres respiratoires:**")
+        variation_respiratoire = st.selectbox("Variation respiratoire flux mitral E", 
+                                            ["<10%", "10-25%", "≥25%"], key="variation_respiratoire")
+        variation_tricuspide = st.selectbox("Variation respiratoire flux tricuspide",
+                                          ["<15%", "15-40%", "≥40%"], key="variation_tricuspide")
+        augmentation_inspiratoire_tr = st.selectbox("Augmentation inspiratoire onde TR",
+                                                  ["Absente", "Présente"], key="augmentation_tr")
+        
+        st.markdown("**📐 Paramètres structuraux:**")
+        septal_bounce = st.selectbox("Mouvement septal paradoxal", ["Absent", "Présent"], key="septal_bounce")
+        annulus_reverse = st.selectbox("Annulus paradoxal (e' latéral > e' septal)", ["Non", "Oui"], key="annulus_reverse")
+        epaisseur_pericarde = st.selectbox("Épaisseur péricarde",
+                                         ["Normal (<3 mm)", "Épaissi (3-5 mm)", "Très épaissi (>5 mm)", "Calcifié"],
+                                         key="epaisseur_pericarde")
+        
+        st.markdown("**📊 Paramètres fonctionnels:**")
+        fonction_vg = st.selectbox("Fonction VG systolique",
+                                 ["Normale", "Légèrement altérée", "Modérément altérée", "Sévèrement altérée"],
+                                 key="fonction_vg")
+        fonction_vd = st.selectbox("Fonction VD", ["Normale", "Altérée"], key="fonction_vd")
+        strain_longitudinal = st.slider("Strain longitudinal global (%)", -25, -10, -18, key="strain_longitudinal")
+        
+        st.markdown("**🔍 Paramètres avancés:**")
+        flux_hepatique = st.selectbox("Flux hépatique diastolique",
+                                    ["Normal", "Inversion expiratoire", "Inversion continu"],
+                                    key="flux_hepatique")
+    
+    with col_feedback:
+        st.subheader("🎯 DIAGNOSTIC DIFFÉRENTIEL")
+        
+        # Calcul des scores
+        score_constriction, score_restrictif = evaluer_constrictive_restrictive(
+            variation_respiratoire, septal_bounce, annulus_reverse, fonction_vg, strain_longitudinal
+        )
+        
+        # Diagnostic
+        if score_constriction >= 4 and score_constriction > score_restrictif:
+            st.markdown("""
+            <div class="critical-alert">
+                <h3>🎯 CONSTRICTION PÉRICARDIQUE PROBABLE</h3>
+                <p><strong>Score constriction:</strong> {score_constriction}/6</p>
+                <p><strong>Score restrictif:</strong> {score_restrictif}/4</p>
+                <p><em>Recommandation:</em> IRM cardiaque et avis spécialisé</p>
+            </div>
+            """.format(score_constriction=score_constriction, score_restrictif=score_restrictif), unsafe_allow_html=True)
+        
+        elif score_restrictif >= 3 and score_restrictif > score_constriction:
+            st.markdown("""
+            <div class="critical-alert">
+                <h3>🎯 CARDIOMYOPATHIE RESTRICTIVE PROBABLE</h3>
+                <p><strong>Score constriction:</strong> {score_constriction}/6</p>
+                <p><strong>Score restrictif:</strong> {score_restrictif}/4</p>
+                <p><em>Recommandation:</em> Bilan étiologique complet et avis spécialisé</p>
+            </div>
+            """.format(score_constriction=score_constriction, score_restrictif=score_restrictif), unsafe_allow_html=True)
+        
+        else:
+            st.markdown("""
+            <div class="warning-alert">
+                <h3>⚠️ DIAGNOSTIC INDÉTERMINÉ</h3>
+                <p><strong>Score constriction:</strong> {score_constriction}/6</p>
+                <p><strong>Score restrictif:</strong> {score_restrictif}/4</p>
+                <p><em>Recommandation:</em> Investigations complémentaires nécessaires (IRM, scanner, cathétérisme)</p>
+            </div>
+            """.format(score_constriction=score_constriction, score_restrictif=score_restrictif), unsafe_allow_html=True)
+        
+        # Tableau comparatif
+        st.subheader("📊 TABLEAU COMPARATIF")
+        
+        comparatif_data = {
+            "Critère": ["Variation respiratoire E mitral", "Mouvement septum", "Annulus mitral",
+                       "Épaisseur péricarde", "Fonction VG", "Strain longitudinal", "Flux hépatique"],
+            "Constriction": ["≥25%", "Bounce paradoxal", "e' latéral > e' septal", "Épaissi/calcifié",
+                           "Préservée", "Relativement préservé", "Inversion expiratoire"],
+            "Restrictive": ["<10%", "Normal ou réduit", "e' latéral ≈ e' septal", "Normal",
+                          "Altérée", "Altéré (≥ -15%)", "Normal"]
+        }
+        
+        st.dataframe(pd.DataFrame(comparatif_data), use_container_width=True)
+
+# ============================================================================
+# PIED DE PAGE COMPLET
 # ============================================================================
 
 st.markdown("---")
-st.markdown("""
-<div class="warning">
-<strong>⚠️ Avertissements Importants:</strong>
-<ul>
-<li>Ces algorithmes sont basés sur les dernières recommandations internationales</li>
-<li>L'interprétation doit être adaptée au contexte clinique individuel</li>
-<li>En cas de doute, consulter un échocardiographiste expérimenté</li>
-<li>Les valeurs seuils peuvent varier selon les laboratoires</li>
-<li>Le cathétérisme cardiaque reste le gold standard pour les diagnostics incertains</li>
-</ul>
+current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+col1, col2, col3 = st.columns([1, 2, 1])
+
+with col2:
+    st.markdown(f"""
+    <div style="text-align: center; color: #666; padding: 1rem;">
+        <p><strong>🔄 APPLICATION ÉCHOCARDIOGRAPHIQUE COMPLÈTE ET DYNAMIQUE</strong></p>
+        <p>Dernière mise à jour: {current_time} | Patient: {patient_id}</p>
+        <p><em>Tous les résultats se mettent à jour automatiquement en temps réel - Aucun bouton de calcul nécessaire</em></p>
+    </div>
+    """, unsafe_allow_html=True)
+
+# ============================================================================
+# SIDEBAR INFERIEUR - FONCTIONNALITÉS COMPLÈMENTAIRES
+# ============================================================================
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("📋 RAPPORT AUTOMATIQUE")
+
+if st.sidebar.button("🖨️ Générer Rapport Complet", key="rapport_complet"):
+    st.sidebar.success("Rapport généré avec succès!")
+    
+    # Simulation de données de rapport
+    rapport_data = f"""
+    RAPPORT ÉCHOCARDIOGRAPHIQUE COMPLET
+    Patient: {patient_id}
+    Date: {current_time}
+    Âge: {age} ans | Sexe: {sexe} | Surface corporelle: {surface_corporelle} m²
+    
+    ÉVALUATION RÉALISÉE: {evaluation_choice}
+    
+    Ce rapport a été généré automatiquement par le système d'aide à l'évaluation échocardiographique.
+    Les résultats sont basés sur les paramètres saisis et les algorithmes des dernières recommandations.
+    
+    ---
+    Signature électronique
+    Système Expert Échocardiographique
+    """
+    
+    st.sidebar.download_button(
+        label="📥 Télécharger Rapport PDF",
+        data=rapport_data,
+        file_name=f"rapport_echo_{patient_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+        mime="text/plain"
+    )
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("📚 RÉFÉRENCES")
+
+with st.sidebar.expander("Voir les références"):
+    st.sidebar.markdown("""
+    **📖 Recommandations:**
+    - **ESC 2021** - Valvulopathies
+    - **ASE 2016** - Fonction Diastolique  
+    - **ESC/ERS 2022** - Hypertension Pulmonaire
+    - **ASE 2021** - Péricardite Constrictive
+    - **EACVI 2021** - Prothèses Valvulaires
+    
+    **🎯 Sociétés Savantes:**
+    - European Society of Cardiology (ESC)
+    - American Society of Echocardiography (ASE)
+    - European Association of Cardiovascular Imaging (EACVI)
+    """)
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("""
+<div style='text-align: center; color: #888; font-size: 0.8rem;'>
+    <p>© 2024 - Guide Échocardiographique Expert</p>
+    <p>Version 2.0 - Interface Dynamique Complète</p>
 </div>
 """, unsafe_allow_html=True)
-
-with st.expander("ℹ️ À propos de cette application"):
-    st.markdown("""
-    **📚 Références Complètes:**
-    - **PRVG & Dysfonction Diastolique:** ESC 2016, ASE 2016, JASE 2020
-    - **HTAP:** ESC/ERS 2022 Guidelines
-    - **Péricardite:** ESC 2015, ASE 2021 Consensus
-    - **Prothèses Valvulaires:** ESC 2021, ASE 2017, EACVI 2021
-    
-    **🎯 Objectif:** Aide à la réalisation d'évaluations échocardiographiques complexes souvent incomplètes en pratique clinique
-    
-    **⚠️ Usage:** Complément à l'expertise clinique, pas un substitut
-    
-    **🔄 Mise à jour:** Dernière mise à jour - Mars 2024
-    
-    **📊 Bases de données:** Intègre les valeurs théoriques des principales prothèses valvulaires
-    """)

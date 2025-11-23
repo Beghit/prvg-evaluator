@@ -31,13 +31,6 @@ st.markdown("""
         border-left: 5px solid #1f77b4;
         margin: 1rem 0;
     }
-    .parameter-section {
-        background-color: #ffffff;
-        padding: 1rem;
-        border-radius: 5px;
-        border: 1px solid #ddd;
-        margin: 0.5rem 0;
-    }
     .warning {
         background-color: #fff3cd;
         border: 1px solid #ffeaa7;
@@ -94,8 +87,126 @@ st.markdown("""
         margin: 0.2rem 0;
         border-left: 4px solid #ff0000;
     }
+    .dataframe {
+        font-size: 0.9rem;
+    }
 </style>
 """, unsafe_allow_html=True)
+
+# ============================================================================
+# BASES DE DONNÉES DES PROTHÈSES VALVULAIRES
+# ============================================================================
+
+# Base de données des prothèses aortiques
+protheses_aortiques = {
+    "Mécaniques": {
+        "St Jude Medical (Regent)": {
+            "19": {"EOA_théorique": 1.3, "Gradient_moyen_normal": "10-15"},
+            "21": {"EOA_théorique": 1.5, "Gradient_moyen_normal": "8-12"},
+            "23": {"EOA_théorique": 1.7, "Gradient_moyen_normal": "7-11"},
+            "25": {"EOA_théorique": 2.0, "Gradient_moyen_normal": "6-10"},
+            "27": {"EOA_théorique": 2.4, "Gradient_moyen_normal": "5-9"},
+            "29": {"EOA_théorique": 2.8, "Gradient_moyen_normal": "4-8"}
+        },
+        "Carbomedics (Top Hat)": {
+            "19": {"EOA_théorique": 1.2, "Gradient_moyen_normal": "12-16"},
+            "21": {"EOA_théorique": 1.4, "Gradient_moyen_normal": "10-14"},
+            "23": {"EOA_théorique": 1.6, "Gradient_moyen_normal": "9-13"},
+            "25": {"EOA_théorique": 1.9, "Gradient_moyen_normal": "8-12"},
+            "27": {"EOA_théorique": 2.2, "Gradient_moyen_normal": "7-11"},
+            "29": {"EOA_théorique": 2.6, "Gradient_moyen_normal": "6-10"}
+        },
+        "On-X": {
+            "19": {"EOA_théorique": 1.5, "Gradient_moyen_normal": "9-13"},
+            "21": {"EOA_théorique": 1.8, "Gradient_moyen_normal": "7-11"},
+            "23": {"EOA_théorique": 2.1, "Gradient_moyen_normal": "6-10"},
+            "25": {"EOA_théorique": 2.5, "Gradient_moyen_normal": "5-9"},
+            "27": {"EOA_théorique": 2.9, "Gradient_moyen_normal": "4-8"},
+            "29": {"EOA_théorique": 3.3, "Gradient_moyen_normal": "4-7"}
+        }
+    },
+    "Biologiques": {
+        "Carpentier-Edwards Perimount": {
+            "19": {"EOA_théorique": 1.1, "Gradient_moyen_normal": "14-18"},
+            "21": {"EOA_théorique": 1.3, "Gradient_moyen_normal": "12-16"},
+            "23": {"EOA_théorique": 1.5, "Gradient_moyen_normal": "10-14"},
+            "25": {"EOA_théorique": 1.7, "Gradient_moyen_normal": "9-13"},
+            "27": {"EOA_théorique": 1.9, "Gradient_moyen_normal": "8-12"},
+            "29": {"EOA_théorique": 2.1, "Gradient_moyen_normal": "7-11"}
+        },
+        "Medtronic Mosaic": {
+            "19": {"EOA_théorique": 1.0, "Gradient_moyen_normal": "15-20"},
+            "21": {"EOA_théorique": 1.2, "Gradient_moyen_normal": "13-17"},
+            "23": {"EOA_théorique": 1.4, "Gradient_moyen_normal": "11-15"},
+            "25": {"EOA_théorique": 1.6, "Gradient_moyen_normal": "10-14"},
+            "27": {"EOA_théorique": 1.8, "Gradient_moyen_normal": "9-13"},
+            "29": {"EOA_théorique": 2.0, "Gradient_moyen_normal": "8-12"}
+        },
+        "St Jude Medical Biocor": {
+            "19": {"EOA_théorique": 1.2, "Gradient_moyen_normal": "13-17"},
+            "21": {"EOA_théorique": 1.4, "Gradient_moyen_normal": "11-15"},
+            "23": {"EOA_théorique": 1.6, "Gradient_moyen_normal": "10-14"},
+            "25": {"EOA_théorique": 1.8, "Gradient_moyen_normal": "9-13"},
+            "27": {"EOA_théorique": 2.0, "Gradient_moyen_normal": "8-12"},
+            "29": {"EOA_théorique": 2.2, "Gradient_moyen_normal": "7-11"}
+        }
+    },
+    "TAVI": {
+        "Edwards SAPIEN 3": {
+            "20": {"EOA_théorique": 1.4, "Gradient_moyen_normal": "8-12"},
+            "23": {"EOA_théorique": 1.7, "Gradient_moyen_normal": "7-11"},
+            "26": {"EOA_théorique": 2.0, "Gradient_moyen_normal": "6-10"},
+            "29": {"EOA_théorique": 2.3, "Gradient_moyen_normal": "5-9"}
+        },
+        "Medtronic Evolut": {
+            "23": {"EOA_théorique": 1.9, "Gradient_moyen_normal": "6-10"},
+            "26": {"EOA_théorique": 2.2, "Gradient_moyen_normal": "5-9"},
+            "29": {"EOA_théorique": 2.6, "Gradient_moyen_normal": "4-8"},
+            "34": {"EOA_théorique": 3.2, "Gradient_moyen_normal": "3-7"}
+        },
+        "Boston Scientific ACURATE": {
+            "23": {"EOA_théorique": 1.8, "Gradient_moyen_normal": "7-11"},
+            "25": {"EOA_théorique": 2.0, "Gradient_moyen_normal": "6-10"},
+            "27": {"EOA_théorique": 2.3, "Gradient_moyen_normal": "5-9"}
+        }
+    }
+}
+
+# Base de données des prothèses mitrales
+protheses_mitrales = {
+    "Mécaniques": {
+        "St Jude Medical": {
+            "25": {"EOA_théorique": 2.1, "Gradient_moyen_normal": "3-5"},
+            "27": {"EOA_théorique": 2.3, "Gradient_moyen_normal": "2.5-4.5"},
+            "29": {"EOA_théorique": 2.5, "Gradient_moyen_normal": "2-4"},
+            "31": {"EOA_théorique": 2.7, "Gradient_moyen_normal": "2-3.5"},
+            "33": {"EOA_théorique": 2.9, "Gradient_moyen_normal": "1.5-3"}
+        },
+        "Carbomedics": {
+            "25": {"EOA_théorique": 2.0, "Gradient_moyen_normal": "3.5-5.5"},
+            "27": {"EOA_théorique": 2.2, "Gradient_moyen_normal": "3-5"},
+            "29": {"EOA_théorique": 2.4, "Gradient_moyen_normal": "2.5-4.5"},
+            "31": {"EOA_théorique": 2.6, "Gradient_moyen_normal": "2-4"},
+            "33": {"EOA_théorique": 2.8, "Gradient_moyen_normal": "2-3.5"}
+        }
+    },
+    "Biologiques": {
+        "Carpentier-Edwards Perimount": {
+            "25": {"EOA_théorique": 1.8, "Gradient_moyen_normal": "4-6"},
+            "27": {"EOA_théorique": 2.0, "Gradient_moyen_normal": "3.5-5.5"},
+            "29": {"EOA_théorique": 2.2, "Gradient_moyen_normal": "3-5"},
+            "31": {"EOA_théorique": 2.4, "Gradient_moyen_normal": "2.5-4.5"},
+            "33": {"EOA_théorique": 2.6, "Gradient_moyen_normal": "2-4"}
+        },
+        "Hancock II": {
+            "25": {"EOA_théorique": 1.7, "Gradient_moyen_normal": "4.5-6.5"},
+            "27": {"EOA_théorique": 1.9, "Gradient_moyen_normal": "4-6"},
+            "29": {"EOA_théorique": 2.1, "Gradient_moyen_normal": "3.5-5.5"},
+            "31": {"EOA_théorique": 2.3, "Gradient_moyen_normal": "3-5"},
+            "33": {"EOA_théorique": 2.5, "Gradient_moyen_normal": "2.5-4.5"}
+        }
+    }
+}
 
 # Titre principal
 st.markdown('<div class="main-header">📊 Guide Échocardiographie Complet - Évaluations Avancées</div>', unsafe_allow_html=True)
@@ -187,7 +298,7 @@ evaluations = {
     },
     "Évaluation Prothèses Valvulaires": {
         "icon": "⚙️",
-        "description": "Évaluation pas-à-pas des prothèses valvulaires mitrales et aortiques",
+        "description": "Évaluation complète avec bases de données des prothèses",
         "reference": "ESC 2021, ASE 2017, EACVI 2021"
     }
 }
@@ -463,7 +574,7 @@ elif evaluation_choice == "Dysfonction Diastolique - Algorithme Complet":
     st.table(data)
 
 # ============================================================================
-# ÉVALUATION 3: PROBABILITÉ HTAP ESC 2022 - RÉVISÉE ET COMPLÈTE
+# ÉVALUATION 3: PROBABILITÉ HTAP ESC 2022
 # ============================================================================
 
 elif evaluation_choice == "Probabilité d'HTAP - ESC 2022":
@@ -602,24 +713,9 @@ elif evaluation_choice == "Probabilité d'HTAP - ESC 2022":
             ]
         }
         st.dataframe(pd.DataFrame(data_secondaires))
-    
-    # Algorithme pour cardiopathie gauche
-    st.markdown("## 💔 **Algorithme pour Patients avec Cardiopathie Gauche**")
-    
-    st.markdown("""
-    <div class="step-box">
-    <strong>Étape 1:</strong> Évaluer la probabilité HTAP sans contexte → Score principal<br>
-    <strong>Étape 2:</strong> Si probabilité ≥ intermédiaire, rechercher discordance VD/VG:<br>
-    &nbsp;&nbsp;• Atteinte VD disproportionnée vs atteinte VG<br>
-    &nbsp;&nbsp;• PVR ≥ 5 UW par écho<br>
-    &nbsp;&nbsp;• Temps accélération VTID très court (<65 ms)<br>
-    &nbsp;&nbsp;• Strain VD très altéré (> -15%)<br>
-    <strong>Étape 3:</strong> Si ≥2 critères de discordance → Suspicion HTAP combinée, cathétérisme
-    </div>
-    """, unsafe_allow_html=True)
 
 # ============================================================================
-# ÉVALUATION 4: PÉRICARDITE CONSTRICTIVE vs RESTRICTIVE - RÉVISÉE
+# ÉVALUATION 4: PÉRICARDITE CONSTRICTIVE vs RESTRICTIVE
 # ============================================================================
 
 elif evaluation_choice == "Péricardite Constrictive vs Restrictive":
@@ -713,58 +809,64 @@ elif evaluation_choice == "Péricardite Constrictive vs Restrictive":
     st.table(data_comparatif)
 
 # ============================================================================
-# ÉVALUATION 5: PROTHÈSES VALVULAIRES - RÉVISÉE ET COMPLÈTE
+# ÉVALUATION 5: PROTHÈSES VALVULAIRES - COMPLÈTE AVEC BASES DE DONNÉES
 # ============================================================================
 
 elif evaluation_choice == "Évaluation Prothèses Valvulaires":
     
-    st.markdown("## ⚙️ Évaluation des Prothèses Valvulaires - Guide Pas-à-Pas Complet")
+    st.markdown("## ⚙️ Évaluation des Prothèses Valvulaires - Base de Données Complète")
     
     # Sélection du type de prothèse
     st.sidebar.markdown("---")
     st.sidebar.subheader("🔧 Type de Prothèse")
-    type_prothese = st.sidebar.selectbox("Type de prothèse", [
-        "Prothèse aortique mécanique",
-        "Prothèse aortique biologique", 
-        "Prothèse mitrale mécanique",
-        "Prothèse mitrale biologique",
-        "TAVI",
-        "Anneau mitral"
-    ])
     
-    # Paramètres communs
+    type_general = st.sidebar.selectbox("Type général", ["Prothèse aortique", "Prothèse mitrale"])
+    
+    if type_general == "Prothèse aortique":
+        categorie = st.sidebar.selectbox("Catégorie", list(protheses_aortiques.keys()))
+        marque = st.sidebar.selectbox("Marque/Modèle", list(protheses_aortiques[categorie].keys()))
+        tailles_disponibles = list(protheses_aortiques[categorie][marque].keys())
+        taille = st.sidebar.selectbox("Taille (mm)", tailles_disponibles)
+        
+        # Récupération des valeurs théoriques
+        donnees_theoriques = protheses_aortiques[categorie][marque][taille]
+        eoa_theorique = donnees_theoriques["EOA_théorique"]
+        gradient_theorique = donnees_theoriques["Gradient_moyen_normal"]
+        
+    else:  # Prothèse mitrale
+        categorie = st.sidebar.selectbox("Catégorie", list(protheses_mitrales.keys()))
+        marque = st.sidebar.selectbox("Marque/Modèle", list(protheses_mitrales[categorie].keys()))
+        tailles_disponibles = list(protheses_mitrales[categorie][marque].keys())
+        taille = st.sidebar.selectbox("Taille (mm)", tailles_disponibles)
+        
+        # Récupération des valeurs théoriques
+        donnees_theoriques = protheses_mitrales[categorie][marque][taille]
+        eoa_theorique = donnees_theoriques["EOA_théorique"]
+        gradient_theorique = donnees_theoriques["Gradient_moyen_normal"]
+    
+    # Affichage des valeurs théoriques
     st.sidebar.markdown("---")
-    st.sidebar.subheader("📊 Paramètres Hémodynamiques")
+    st.sidebar.subheader("📐 Valeurs Théoriques")
+    st.sidebar.markdown(f"**EOA théorique:** {eoa_theorique} cm²")
+    st.sidebar.markdown(f"**Gradient moyen normal:** {gradient_theorique} mmHg")
     
-    # Paramètres selon le type de prothèse
-    if "aortique" in type_prothese or type_prothese == "TAVI":
-        st.sidebar.markdown("**📈 Paramètres aortiques:**")
-        gradient_moyen = st.sidebar.number_input("Gradient moyen (mmHg)", 5, 60, 15)
-        gradient_pic = st.sidebar.number_input("Gradient pic (mmHg)", 10, 100, 25)
-        vti_lvot = st.sidebar.number_input("VTI LVOT (cm)", 15, 30, 20)
-        vti_prothese = st.sidebar.number_input("VTI prothèse (cm)", 10, 25, 15)
-        eoa = st.sidebar.number_input("Surface effective (EOA cm²)", 0.5, 3.0, 1.5, 0.1)
+    # Paramètres hémodynamiques mesurés
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("📊 Paramètres Mesurés")
+    
+    if type_general == "Prothèse aortique":
+        gradient_moyen_mesure = st.sidebar.number_input("Gradient moyen mesuré (mmHg)", 5, 60, 15)
+        vmax = st.sidebar.number_input("Vitesse max (m/s)", 1.5, 5.0, 2.5, 0.1)
+        eoa_mesuree = st.sidebar.number_input("EOA mesurée (cm²)", 0.5, 3.0, eoa_theorique, 0.1)
         dvi = st.sidebar.number_input("Index de performance (DVI)", 0.1, 0.5, 0.35, 0.01)
         acceleration_time = st.sidebar.number_input("Temps accélération (ms)", 50, 150, 90)
-        
-        # Paramètres théoriques pour comparaison
-        st.sidebar.markdown("**📐 Paramètres théoriques:**")
-        eoa_theorique = st.sidebar.number_input("EOA théorique (cm²)", 1.0, 4.0, 2.0, 0.1)
-        taille_prothese = st.sidebar.number_input("Taille prothèse (mm)", 19, 29, 23)
-        
-    else:  # Prothèses mitrales
-        st.sidebar.markdown("**📈 Paramètres mitrales:**")
-        gradient_moyen = st.sidebar.number_input("Gradient moyen (mmHg)", 2, 15, 5)
+    else:
+        gradient_moyen_mesure = st.sidebar.number_input("Gradient moyen mesuré (mmHg)", 2, 15, 5)
         pht = st.sidebar.number_input("Temps pression-demi (ms)", 50, 300, 120)
-        eoa = st.sidebar.number_input("Surface effective (cm²)", 0.5, 3.0, 1.8, 0.1)
+        eoa_mesuree = st.sidebar.number_input("EOA mesurée (cm²)", 0.5, 3.0, eoa_theorique, 0.1)
         pression_og_estimee = st.sidebar.number_input("Pression OG estimée (mmHg)", 5, 40, 15)
-        
-        # Paramètres théoriques pour comparaison
-        st.sidebar.markdown("**📐 Paramètres théoriques:**")
-        eoa_theorique = st.sidebar.number_input("EOA théorique (cm²)", 1.5, 4.0, 2.5, 0.1)
-        taille_prothese = st.sidebar.number_input("Taille prothèse (mm)", 25, 35, 29)
     
-    # Paramètres communs à toutes les prothèses
+    # Paramètres communs
     st.sidebar.markdown("**🔄 Régurgitation:**")
     regurgitation = st.sidebar.selectbox("Régurgitation para-valvulaire", ["Absente", "Légère", "Modérée", "Sévère"])
     localisation_regurgitation = st.sidebar.selectbox("Localisation fuite", ["Para-valvulaire", "Intra-prothétique", "Mixte"])
@@ -774,128 +876,149 @@ elif evaluation_choice == "Évaluation Prothèses Valvulaires":
     pap_systolique = st.sidebar.number_input("PAP systolique (mmHg)", 15, 100, 35)
     
     # Algorithme d'évaluation COMPLET
-    st.markdown(f"## 🔍 **Évaluation de la {type_prothese}**")
+    st.markdown(f"## 🔍 **Évaluation de la {marque} {taille}mm ({categorie})**")
     
-    st.markdown("### 📋 **Étape 1: Mesures Standard Obligatoires**")
+    # Étape 1: Comparaison avec valeurs théoriques
+    st.markdown("### 📋 **Étape 1: Comparaison avec Valeurs Théoriques**")
     
-    col1, col2 = st.columns(2)
+    ratio_eoa = (eoa_mesuree / eoa_theorique) * 100
+    gradient_min, gradient_max = map(int, gradient_theorique.split('-'))
+    gradient_dans_normes = gradient_min <= gradient_moyen_mesure <= gradient_max
+    
+    col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.markdown("**📊 Prothèse Aortique/TAVI:**")
-        st.markdown("- Gradient moyen et pic")
-        st.markdown("- Surface effective (EOA)")
-        st.markdown("- Index de performance (DVI)")
-        st.markdown("- Accélération temps")
-        st.markdown("- Vitesse VTI LVOT/Prothèse")
-        st.markdown("- Comparaison EOA mesurée/théorique")
-        
+        st.metric("EOA mesurée/théorique", f"{ratio_eoa:.1f}%")
+        if ratio_eoa >= 80:
+            st.success("✅ Excellent match")
+        elif ratio_eoa >= 65:
+            st.warning("🟡 Match acceptable")
+        else:
+            st.error("🔴 Mismatch significatif")
+    
     with col2:
-        st.markdown("**📊 Prothèse Mitrale/Anneau:**")
-        st.markdown("- Gradient moyen")
-        st.markdown("- Temps pression-demi (PHT)")
-        st.markdown("- Surface effective")
-        st.markdown("- Pression artérielle pulmonaire")
-        st.markdown("- Fonction VG")
-        st.markdown("- Comparaison EOA mesurée/théorique")
-    
-    st.markdown("### 🎯 **Étape 2: Analyse de la Performance**")
-    
-    # Calculs spécifiques selon le type
-    if "aortique" in type_prothese or type_prothese == "TAVI":
-        # Calcul du DVI
-        dvi_calcule = vti_lvot / vti_prothese if vti_prothese > 0 else dvi
-        
-        # Comparaison EOA théorique/mesurée
-        ratio_eoa = (eoa / eoa_theorique) * 100 if eoa_theorique > 0 else 0
-        
-        st.markdown(f"**📐 Comparaison EOA:** {ratio_eoa:.1f}% (mesurée/théorique)")
-        st.markdown(f"**📊 DVI calculé:** {dvi_calcule:.2f}")
-        
-        # Critères de dysfonction
-        st.markdown("**🔍 Critères de Sténose Prothétique Aortique (ESC 2021):**")
-        
-        criteres_severes = 0
-        if gradient_moyen > 35: criteres_severes += 1
-        if eoa < 1.0: criteres_severes += 1
-        if dvi_calcule < 0.25: criteres_severes += 1
-        if ratio_eoa < 50: criteres_severes += 1
-        
-        if criteres_severes >= 3:
-            st.markdown('<div class="danger-box">🔴 **DYSFONCTION SÉVÈRE**<br>≥3 critères sévères présents</div>', unsafe_allow_html=True)
-        elif criteres_severes >= 2:
-            st.markdown('<div class="warning">🟡 **DYSFONCTION MODÉRÉE**<br>2 critères sévères</div>', unsafe_allow_html=True)
-        elif gradient_moyen > 20 or eoa < 1.2 or dvi_calcule < 0.30 or ratio_eoa < 65:
-            st.markdown('<div class="warning">🟡 **DYSFONCTION LÉGÈRE**<br>Au moins 1 critère</div>', unsafe_allow_html=True)
+        st.metric("Gradient moyen", f"{gradient_moyen_mesure} mmHg")
+        if gradient_dans_normes:
+            st.success(f"✅ Dans normes ({gradient_theorique})")
         else:
-            st.markdown('<div class="success-box">🟢 **FONCTION NORMALE**<br>Critères dans les limites</div>', unsafe_allow_html=True)
+            st.error(f"🔴 Hors normes ({gradient_theorique})")
+    
+    with col3:
+        if type_general == "Prothèse aortique":
+            st.metric("DVI", f"{dvi:.2f}")
+            if dvi >= 0.30:
+                st.success("✅ Normal")
+            elif dvi >= 0.25:
+                st.warning("🟡 Limite")
+            else:
+                st.error("🔴 Anormal")
+    
+    # Étape 2: Classification de la performance
+    st.markdown("### 🎯 **Étape 2: Classification de la Performance**")
+    
+    if type_general == "Prothèse aortique":
+        # Critères pour prothèse aortique
+        st.markdown("**🔍 Critères ESC 2021 pour Prothèse Aortique:**")
+        
+        performance = "Fonction normale"
+        severite = "success"
+        
+        if gradient_moyen_mesure > 35 and eoa_mesuree < 1.0 and dvi < 0.25 and ratio_eoa < 50:
+            performance = "Dysfonction sévère"
+            severite = "error"
+        elif (gradient_moyen_mesure > 20 or eoa_mesuree < 1.2 or dvi < 0.30 or ratio_eoa < 65) and not gradient_dans_normes:
+            performance = "Dysfonction modérée"
+            severite = "warning"
+        elif not gradient_dans_normes or ratio_eoa < 80:
+            performance = "Dysfonction légère"
+            severite = "warning"
+        
+        if severite == "error":
+            st.error(f"🔴 **{performance}**")
+        elif severite == "warning":
+            st.warning(f"🟡 **{performance}**")
+        else:
+            st.success(f"🟢 **{performance}**")
             
-    else:  # Prothèses mitrales
-        # Comparaison EOA théorique/mesurée
-        ratio_eoa = (eoa / eoa_theorique) * 100 if eoa_theorique > 0 else 0
+    else:
+        # Critères pour prothèse mitrale
+        st.markdown("**🔍 Critères ASE 2017 pour Prothèse Mitrale:**")
         
-        st.markdown(f"**📐 Comparaison EOA:** {ratio_eoa:.1f}% (mesurée/théorique)")
+        performance = "Fonction normale"
+        severite = "success"
         
-        # Critères de dysfonction
-        st.markdown("**🔍 Critères de Sténose Prothétique Mitrale (ASE 2017):**")
+        if gradient_moyen_mesure > 10 and eoa_mesuree < 1.0 and ratio_eoa < 50:
+            performance = "Dysfonction sévère"
+            severite = "error"
+        elif (gradient_moyen_mesure > 7 or eoa_mesuree < 1.3 or ratio_eoa < 65) and not gradient_dans_normes:
+            performance = "Dysfonction modérée"
+            severite = "warning"
+        elif not gradient_dans_normes or ratio_eoa < 80:
+            performance = "Dysfonction légère"
+            severite = "warning"
         
-        criteres_severes = 0
-        if gradient_moyen > 10: criteres_severes += 1
-        if eoa < 1.0: criteres_severes += 1
-        if pht > 200: criteres_severes += 1
-        if ratio_eoa < 50: criteres_severes += 1
-        
-        if criteres_severes >= 3:
-            st.markdown('<div class="danger-box">🔴 **DYSFONCTION SÉVÈRE**</div>', unsafe_allow_html=True)
-        elif criteres_severes >= 2:
-            st.markdown('<div class="warning">🟡 **DYSFONCTION MODÉRÉE**</div>', unsafe_allow_html=True)
-        elif gradient_moyen > 7 or eoa < 1.3 or ratio_eoa < 65:
-            st.markdown('<div class="warning">🟡 **DYSFONCTION LÉGÈRE**</div>', unsafe_allow_html=True)
+        if severite == "error":
+            st.error(f"🔴 **{performance}**")
+        elif severite == "warning":
+            st.warning(f"🟡 **{performance}**")
         else:
-            st.markdown('<div class="success-box">🟢 **FONCTION NORMALE**</div>', unsafe_allow_html=True)
+            st.success(f"🟢 **{performance}**")
     
+    # Étape 3: Recherche de complications spécifiques
     st.markdown("### 🔬 **Étape 3: Recherche de Complications**")
     
-    with st.expander("📋 **Checklist complications détaillée**"):
+    with st.expander("📋 **Diagnostics différentiels selon le pattern hémodynamique**"):
+        
         col1, col2 = st.columns(2)
         
         with col1:
-            st.markdown("**⚙️ Prothèses Mécaniques:**")
-            st.markdown("- **Thrombose:** Gradient augmenté progressif")
-            st.markdown("- **Pannus:** Gradient augmenté progressif + EOA réduite")
-            st.markdown("- **Fuites para-valvulaires:** Jet excentrique")
-            st.markdown("- **Déhiscence:** Mobilité excessive de l'anneau")
-            st.markdown("- **Endocardite:** Vegetations, abcès, nouvelles fuites")
-            st.markdown("- **Hémolyse:** Fuites importantes")
+            st.markdown("**📈 Gradient ↑ + EOA ↓:**")
+            st.markdown("- **Thrombose:** Augmentation rapide des gradients")
+            st.markdown("- **Pannus:** Augmentation progressive + EOA réduite")
+            st.markdown("- **Endocardite:** Nouveaux gradients + végétations")
+            st.markdown("- **Dégénérescence:** Calcifications progressives")
             
         with col2:
-            st.markdown("**🌿 Prothèses Biologiques/TAVI:**")
-            st.markdown("- **Dégénérescence:** Calcifications, restriction mobilité")
-            st.markdown("- **Sténose:** Gradient augmenté progressif")
-            st.markdown("- **Régurgitation intra-prothétique:** Usure des feuillets")
-            st.markdown("- **Endocardite:** Mêmes critères que mécaniques")
-            st.markdown("- **Malposition:** Fuites para-valvulaires")
-            st.markdown("- **Conduction disorders:** Blocs post-implantation")
+            st.markdown("**📉 Gradient normal + EOA ↓:**")
+            st.markdown("- **Mismatch patient-prothèse**")
+            st.markdown("- **Dysfonction VG**")
+            st.markdown("- **Débit cardiaque bas**")
+            st.markdown("- **Sténose sub-valvulaire**")
     
-    st.markdown("### 📈 **Valeurs de Référence par Type de Prothèse**")
+    # Étape 4: Tableau récapitulatif
+    st.markdown("### 📊 **Étape 4: Tableau Récapitulatif**")
     
-    if "aortique" in type_prothese or type_prothese == "TAVI":
-        data_prothese = {
-            "Type": ["Mécanique double ailette", "Bioprothèse stented", "Bioprothèse stentless", "TAVI"],
-            "Gradient moyen normal": ["10-20 mmHg", "10-15 mmHg", "5-10 mmHg", "5-10 mmHg"],
-            "EOA normale": ["1.5-2.5 cm²", "1.2-1.8 cm²", "1.4-2.2 cm²", "1.5-2.5 cm²"],
-            "DVI normal": [">0.30", ">0.30", ">0.30", ">0.30"],
-            "Ratio EOA attendu": [">65%", ">65%", ">65%", ">65%"]
+    if type_general == "Prothèse aortique":
+        data_recap = {
+            "Paramètre": ["Marque/Modèle", "Taille", "EOA théorique", "EOA mesurée", "Ratio EOA", 
+                         "Gradient théorique", "Gradient mesuré", "DVI", "Performance"],
+            "Valeur": [marque, f"{taille} mm", f"{eoa_theorique} cm²", f"{eoa_mesuree} cm²", f"{ratio_eoa:.1f}%",
+                      gradient_theorique, f"{gradient_moyen_mesure} mmHg", f"{dvi:.2f}", performance]
         }
     else:
-        data_prothese = {
-            "Type": ["Mécanique double ailette", "Bioprothèse stented", "Anneau mitral", "Valve native préservée"],
-            "Gradient moyen normal": ["3-5 mmHg", "3-6 mmHg", "1-3 mmHg", "1-3 mmHg"],
-            "EOA normale": ["2.0-3.0 cm²", "1.8-2.5 cm²", "3.0-4.0 cm²", "4.0-5.0 cm²"],
-            "PHT normal": ["80-120 ms", "90-130 ms", "60-100 ms", "60-80 ms"],
-            "Ratio EOA attendu": [">65%", ">65%", "N/A", "N/A"]
+        data_recap = {
+            "Paramètre": ["Marque/Modèle", "Taille", "EOA théorique", "EOA mesurée", "Ratio EOA", 
+                         "Gradient théorique", "Gradient mesuré", "PHT", "Performance"],
+            "Valeur": [marque, f"{taille} mm", f"{eoa_theorique} cm²", f"{eoa_mesuree} cm²", f"{ratio_eoa:.1f}%",
+                      gradient_theorique, f"{gradient_moyen_mesure} mmHg", f"{pht} ms", performance]
         }
     
-    st.table(pd.DataFrame(data_prothese))
+    st.table(pd.DataFrame(data_recap))
+    
+    # Bases de données consultables
+    st.markdown("### 🗃️ **Bases de Données des Prothèses**")
+    
+    with st.expander("📋 Consulter la base de données aortique"):
+        for categorie_db, marques in protheses_aortiques.items():
+            st.markdown(f"**{categorie_db}:**")
+            for marque_db, tailles in marques.items():
+                st.markdown(f"- {marque_db}: {', '.join([f'{t}mm' for t in tailles.keys()])}")
+    
+    with st.expander("📋 Consulter la base de données mitrale"):
+        for categorie_db, marques in protheses_mitrales.items():
+            st.markdown(f"**{categorie_db}:**")
+            for marque_db, tailles in marques.items():
+                st.markdown(f"- {marque_db}: {', '.join([f'{t}mm' for t in tailles.keys()])}")
 
 # ============================================================================
 # PIED DE PAGE COMMUN
@@ -929,5 +1052,5 @@ with st.expander("ℹ️ À propos de cette application"):
     
     **🔄 Mise à jour:** Dernière mise à jour - Mars 2024
     
-    **📊 Paramètres inclus:** Tous les paramètres essentiels selon les dernières recommandations
+    **📊 Bases de données:** Intègre les valeurs théoriques des principales prothèses valvulaires
     """)
